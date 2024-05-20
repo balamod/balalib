@@ -1,5 +1,7 @@
 use mlua::prelude::*;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn echo(_: &Lua, name: String) -> LuaResult<String> {
     Ok(name)
 }
@@ -93,6 +95,7 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     let balalib_table = lua.create_table()?;
     balalib_table.set("echo", lua.create_function(echo)?)?;
     balalib_table.set("fetch_mods", lua.create_function(|lua, ()| fetch_mods(lua, ()))?)?;
+    balalib_table.set("version", VERSION)?;
     exports.set("balalib", balalib_table)?;
     Ok(exports)
 }
