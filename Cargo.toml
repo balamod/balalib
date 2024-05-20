@@ -1,0 +1,13 @@
+[package]
+name = "balalib"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+mlua = { version = "0.9.6", features = ["lua51", "macros", "serialize", "module"] }
+reqwest = { version = "0.12.2", features = ["json", "blocking"] }
+tokio = { version = "1.37.0", features = ["rt", "rt-multi-thread", "macros"] }
+serde_json = "1.0.115"
