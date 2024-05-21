@@ -1,4 +1,4 @@
-use mlua::{IntoLua, Lua};
+use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +25,45 @@ impl IntoLua<'_> for ModInfo {
     }
 }
 
+impl FromLua<'_> for ModInfo {
+    fn from_lua(value: LuaValue, _: &'_ Lua) -> LuaResult<Self> {
+        let table = value.as_table().expect("Expected table");
+        Ok(ModInfo {
+            url: table.get("url")?,
+            id: table.get("id")?,
+            name: table.get("name")?,
+            description: table.get("description")?,
+            version: table.get("version")?,
+            authors: table.get("authors")?,
+        })
+    }
+}
+
+pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
+    let owner = mod_info.url.split("/").nth(3).unwrap();
+    let repo = mod_info.url.split("/").nth(4).unwrap();
+    let version = mod_info.version;
+    let id = mod_info.id;
+    let client = reqwest::blocking::Client::new();
+    let url = format!("https://github.com/{}/{}/releases/download/{}/{}.tar.gz", owner, repo, version, id);
+    let response = client.get(url.clone()).send().expect("Failed to get response");
+    let body = response.bytes().expect("Failed to get body");
+    let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+    let mods_dir = format!("{}/mods", love_dir);
+    let mod_dir = format!("{}/{}", mods_dir, id);
+    std::fs::create_dir_all(&mod_dir)?;
+    let tar = body.to_vec();
+    unpack_tar(&mod_dir, tar.clone()).expect(format!("Failed to unpack tar: {}", url).as_str());
+    Ok(())
+}
+
+pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    let tar = std::io::Cursor::new(tar);
+    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(tar));
+    archive.unpack(dir)?;
+    Ok(())
+}
+
 pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
     let client = reqwest::blocking::Client::new();
     return match client.get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index").send() {
@@ -33,7 +72,6 @@ pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
                 Ok(text) => {
                     let mut mods = Vec::new();
                     for line in text.lines() {
-                        println!("Fetching mods from repo: {}", line);
                         match get_mods_from_repo(line.to_string()) {
                             Ok(mod_infos) => {
                                 for mod_info in mod_infos {
@@ -57,7 +95,7 @@ pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
         Err(e) => {
             Err(LuaError::RuntimeError(format!("Error: {}", e)))
         }
-    }
+    };
 }
 
 fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> {
@@ -125,7 +163,7 @@ pub struct LocalMod {
     pub description: Vec<String>,
     pub author: String,
     pub load_before: Vec<String>,
-    pub load_after: Vec<String>
+    pub load_after: Vec<String>,
 }
 
 impl IntoLua<'_> for LocalMod {

@@ -20,6 +20,7 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("fetch_mods", lua.create_function(|lua, ()| fetch_mods(lua, ()))?)?;
     exports.set("get_local_mods", lua.create_function(|lua, ()| get_local_mods(lua, ()))?)?;
     exports.set("need_update", lua.create_function(|lua, ()| need_update(lua, ()))?)?;
+    exports.set("download_mod", lua.create_function(|lua, mod_info: ModInfo| download_mod(lua, mod_info))?)?;
     exports.set("version", VERSION)?;
     Ok(exports)
 }
