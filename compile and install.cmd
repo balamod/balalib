@@ -22,5 +22,15 @@ if %ERRORLEVEL% == 0 (
 :: building the dll
 cargo build --release
 
+:: Compress the dll
+where upx.exe
+if %ERRORLEVEL% == 0 (
+    echo Found upx
+    upx --best --lzma target/release/balalib.dll
+) else (
+    echo upx not found
+    echo Skipping compression
+)
+
 :: copy the dll to %appdata%/Balatro
 copy target\release\balalib.dll "%appdata%\Balatro\balalib.dll"
