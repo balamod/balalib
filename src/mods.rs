@@ -104,6 +104,13 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
         let manifest = std::fs::read_to_string(manifest_file)?;
         let manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
 
+        let folder_name = mod_dir.split("/").last().unwrap();
+        let folder_name = folder_name.split("\\").last().unwrap();
+
+        if manifest.id != folder_name {
+            return Err(LuaError::RuntimeError(format!("Mod id in manifest.json does not match folder name: {} != {}", manifest.id, folder_name)));
+        }
+
         local_mods.push(manifest);
     }
 
