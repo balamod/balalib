@@ -171,7 +171,6 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalMod {
     pub id: String,
-    // default to false
     #[serde(skip)]
     pub enabled: bool,
     pub name: String,
@@ -180,6 +179,8 @@ pub struct LocalMod {
     pub author: String,
     pub load_before: Vec<String>,
     pub load_after: Vec<String>,
+    pub min_balamod_version: Option<String>,
+    pub max_balamod_version: Option<String>,
 }
 
 impl IntoLua<'_> for LocalMod {

@@ -26,5 +26,6 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("json_to_lua", lua.create_function(|lua, json: String| json_to_lua(lua, json))?)?;
     exports.set("is_mod_present", lua.create_function(|lua, mod_info: ModInfo| is_mod_present(lua, mod_info))?)?;
     exports.set("version", VERSION)?;
+    lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str()).exec()?;
     Ok(exports)
 }
