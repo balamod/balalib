@@ -1,6 +1,7 @@
 use mlua::{Lua, Table, Value};
 use mlua::prelude::LuaResult;
 use serde_json::Value as JsonValue;
+use crate::mods::ModInfo;
 
 pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
     let current_version = lua.load("require('balamod_version')").eval::<String>()?;
@@ -112,4 +113,21 @@ fn json_value_to_lua_value(lua: &Lua, value: serde_json::Value) -> LuaResult<Val
 
 pub fn get_love_dir(lua: &Lua) -> LuaResult<String> {
     lua.load("love.filesystem.getSaveDirectory()").eval::<String>()
+}
+
+pub fn is_mod_present(lua: &Lua, mod_info:ModInfo) -> LuaResult<bool> {
+    let love_dir = get_love_dir(lua)?;
+    let mods_dir = format!("{}/mods", love_dir);
+    let mod_dir = format!("{}/{}", mods_dir, mod_info.id);
+    if !std::path::Path::new(&mod_dir).exists() {
+        return Ok(false);
+    }
+
+    let manifest_path = format!("{}/manifest.json", mod_dir);
+    if !std::path::Path::new(&manifest_path).exists() {
+        return Ok(false);
+    }
+
+    let main_path = format!("{}/main.lua", mod_dir);
+    Ok(std::path::Path::new(&main_path).exists())
 }
