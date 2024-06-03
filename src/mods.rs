@@ -2,7 +2,7 @@ use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModInfo {
     pub url: String,
     pub id: String,
@@ -159,7 +159,7 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
     Ok(local_mods)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalMod {
     pub id: String,
     // default to false
@@ -175,16 +175,22 @@ pub struct LocalMod {
 
 impl IntoLua<'_> for LocalMod {
     fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
+        let local_mod = self.clone();
         let table = lua.create_table()?;
-        table.set("id", self.id)?;
-        table.set("name", self.name)?;
-        table.set("enabled", self.enabled)?;
-        table.set("version", self.version)?;
-        table.set("description", self.description)?;
-        table.set("author", self.author)?;
-        table.set("load_before", self.load_before)?;
-        table.set("load_after", self.load_after)?;
-        table.set("delete", lua.create_function(|lua, ()| self.delete(lua))?)?;
+        let delete_mod = local_mod.clone();
+        let update_mod = local_mod.clone();
+        table.set("update", lua.create_function(move |lua, mods: Vec<ModInfo>| update_mod.update(lua, mods))?)?;
+        table.set("delete", lua.create_function(move |lua, ()| delete_mod.delete(lua))?)?;
+        table.set("id", local_mod.id)?;
+        table.set("name", local_mod.name)?;
+        table.set("enabled", local_mod.enabled)?;
+        table.set("version", local_mod.version)?;
+        table.set("description", local_mod.description)?;
+        table.set("author", local_mod.author)?;
+        table.set("load_before", local_mod.load_before)?;
+        table.set("load_after", local_mod.load_after)?;
+
+
         Ok(LuaValue::Table(table))
     }
 }
@@ -196,5 +202,20 @@ impl LocalMod {
         let mod_dir = format!("{}/{}", mods_dir, self.id);
         std::fs::remove_dir_all(mod_dir)?;
         Ok(())
+    }
+
+    pub fn update(&self, lua: &Lua, mods: Vec<ModInfo>) -> LuaResult<()> {
+        let mod_info = mods.iter().find(|mod_info| mod_info.id == self.id);
+        match mod_info {
+            Some(mod_info) => {
+                download_mod(lua, mod_info.clone())?;
+                println!("Updated mod: {}", self.id);
+                Ok(())
+            }
+            None => {
+                println!("Mod not found in the repo: {}", self.id);
+                return Err(LuaError::RuntimeError(format!("Mod not found in the repo: {}", self.id)));
+            }
+        }
     }
 }
