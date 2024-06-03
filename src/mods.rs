@@ -140,7 +140,7 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
         }
 
         let manifest = std::fs::read_to_string(manifest_file)?;
-        let manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
+        let mut manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
 
         let folder_name = mod_dir.split("/").last().unwrap();
         let folder_name = folder_name.split("\\").last().unwrap();
@@ -148,6 +148,8 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
         if manifest.id != folder_name {
             return Err(LuaError::RuntimeError(format!("Mod id in manifest.json does not match folder name: {} != {}", manifest.id, folder_name)));
         }
+
+        manifest.enabled = !std::path::Path::new(&format!("{}/disable.it", mod_dir)).exists();
 
         local_mods.push(manifest);
     }
@@ -158,6 +160,9 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LocalMod {
     pub id: String,
+    // default to false
+    #[serde(skip)]
+    pub enabled: bool,
     pub name: String,
     pub version: String,
     pub description: Vec<String>,
@@ -171,6 +176,7 @@ impl IntoLua<'_> for LocalMod {
         let table = lua.create_table()?;
         table.set("id", self.id)?;
         table.set("name", self.name)?;
+        table.set("enabled", self.enabled)?;
         table.set("version", self.version)?;
         table.set("description", self.description)?;
         table.set("author", self.author)?;
