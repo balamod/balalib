@@ -21,12 +21,15 @@ impl IntoLua<'_> for ModInfo {
         table.set("description", self.description)?;
         table.set("version", self.version)?;
         table.set("authors", self.authors)?;
+        let download_func = lua.create_function(|lua, mod_info: ModInfo| download_mod(lua, mod_info))?;
+        table.set("download", download_func)?;
         Ok(LuaValue::Table(table))
     }
 }
 
 impl FromLua<'_> for ModInfo {
     fn from_lua(value: LuaValue, _: &'_ Lua) -> LuaResult<Self> {
+        println!("Type: {}", value.type_name());
         let table = value.as_table().expect("Expected table");
         Ok(ModInfo {
             url: table.get("url")?,
