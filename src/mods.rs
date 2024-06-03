@@ -1,6 +1,7 @@
 use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
+use crate::core::{json_to_lua, lua_to_json};
 
 #[derive(Debug, Clone)]
 pub struct ModInfo {
@@ -186,8 +187,12 @@ impl IntoLua<'_> for LocalMod {
         let table = lua.create_table()?;
         let delete_mod = local_mod.clone();
         let update_mod = local_mod.clone();
+        let save_config = local_mod.clone();
+        let load_config = local_mod.clone();
         table.set("update", lua.create_function(move |lua, mods: Vec<ModInfo>| update_mod.update(lua, mods))?)?;
         table.set("delete", lua.create_function(move |lua, ()| delete_mod.delete(lua))?)?;
+        table.set("save_config", lua.create_function(move |lua, table: LuaValue| save_config.save_config(lua, table))?)?;
+        table.set("load_config", lua.create_function(move |lua, ()| load_config.load_config(lua))?)?;
         table.set("id", local_mod.id)?;
         table.set("name", local_mod.name)?;
         table.set("enabled", local_mod.enabled)?;
@@ -224,5 +229,29 @@ impl LocalMod {
                 return Err(LuaError::RuntimeError(format!("Mod not found in the repo: {}", self.id)));
             }
         }
+    }
+
+    pub fn save_config(&self, lua: &Lua, table: LuaValue) -> LuaResult<()> {
+        let json = lua_to_json(table)?;
+        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let mods_dir = format!("{}/mods", love_dir);
+        let mod_dir = format!("{}/{}", mods_dir, self.id);
+        let config_file = format!("{}/config.json", mod_dir);
+        std::fs::write(config_file, json)?;
+        Ok(())
+    }
+
+    pub fn load_config<'lua>(&self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
+        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let mods_dir = format!("{}/mods", love_dir);
+        let mod_dir = format!("{}/{}", mods_dir, self.id);
+        let config_file = format!("{}/config.json", mod_dir);
+        if !std::path::Path::new(&config_file).exists() {
+            println!("No config file found for mod: {}", self.id);
+            return Ok(LuaValue::Nil);
+        }
+
+        let json = std::fs::read_to_string(config_file)?;
+       json_to_lua(lua, json)
     }
 }
