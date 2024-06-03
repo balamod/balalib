@@ -1,3 +1,4 @@
+use std::io::Write;
 use mlua::{Lua, Table, Value};
 use mlua::prelude::LuaResult;
 use serde_json::Value as JsonValue;
@@ -130,4 +131,31 @@ pub fn is_mod_present(lua: &Lua, mod_info:ModInfo) -> LuaResult<bool> {
 
     let main_path = format!("{}/main.lua", mod_dir);
     Ok(std::path::Path::new(&main_path).exists())
+}
+
+#[cfg(target_os = "windows")]
+pub fn self_update(cli_ver: &str) -> LuaResult<()> {
+    // example with v0.1.11
+    //https://github.com/balamod/balamod/releases/download/v0.1.11/balamod-v0.1.11-windows.exe
+    let url = format!("https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe", cli_ver, cli_ver);
+    let client = reqwest::blocking::Client::builder().user_agent("balalib").build().unwrap();
+    let mut response = client.get(&url).send().unwrap();
+    let mut file = std::fs::File::create("balamod.exe").unwrap();
+    std::io::copy(&mut response, &mut file).unwrap();
+    // create the bat file
+    let mut bat_file = std::fs::File::create("update.bat").unwrap();
+    bat_file.write_all(b"taskkill /IM balatro.exe /F\n").unwrap();
+    // run balamod -u -a
+    bat_file.write_all(b"balamod.exe -u\n").unwrap();
+    bat_file.write_all(b"balamod.exe -a\n").unwrap();
+    // delete the bat file
+    bat_file.write_all(b"del update.bat\n").unwrap();
+    bat_file.write_all(b"balatro.exe\n").unwrap();
+
+    // in a parallel process, run the bat file so that the current process can exit
+    std::process::Command::new("cmd")
+        .args(&["/C", "start", "update.bat"])
+        .spawn()
+        .unwrap();
+    Ok(())
 }

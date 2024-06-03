@@ -1,6 +1,6 @@
 use mlua::prelude::*;
 use mlua::Value;
-use crate::core::{is_mod_present, json_to_lua, lua_to_json, need_update};
+use crate::core::{is_mod_present, json_to_lua, lua_to_json, need_update, self_update};
 
 use crate::mods::*;
 
@@ -25,6 +25,7 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("lua_to_json", lua.create_function(|_, table: Value| lua_to_json(table))?)?;
     exports.set("json_to_lua", lua.create_function(|lua, json: String| json_to_lua(lua, json))?)?;
     exports.set("is_mod_present", lua.create_function(|lua, mod_info: ModInfo| is_mod_present(lua, mod_info))?)?;
+    exports.set("self_update", lua.create_function(|_, ()| self_update("v0.1.11"))?)?;
     exports.set("version", VERSION)?;
     lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str()).exec()?;
     Ok(exports)
