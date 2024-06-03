@@ -29,7 +29,6 @@ impl IntoLua<'_> for ModInfo {
 
 impl FromLua<'_> for ModInfo {
     fn from_lua(value: LuaValue, _: &'_ Lua) -> LuaResult<Self> {
-        println!("Type: {}", value.type_name());
         let table = value.as_table().expect("Expected table");
         Ok(ModInfo {
             url: table.get("url")?,
@@ -185,6 +184,17 @@ impl IntoLua<'_> for LocalMod {
         table.set("author", self.author)?;
         table.set("load_before", self.load_before)?;
         table.set("load_after", self.load_after)?;
+        table.set("delete", lua.create_function(|lua, ()| self.delete(lua))?)?;
         Ok(LuaValue::Table(table))
+    }
+}
+
+impl LocalMod {
+    pub fn delete(&self, lua: &Lua) -> LuaResult<()> {
+        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let mods_dir = format!("{}/mods", love_dir);
+        let mod_dir = format!("{}/{}", mods_dir, self.id);
+        std::fs::remove_dir_all(mod_dir)?;
+        Ok(())
     }
 }
