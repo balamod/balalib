@@ -1,7 +1,8 @@
 use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
-use crate::core::{json_to_lua, lua_to_json};
+
+use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 
 #[derive(Debug, Clone)]
 pub struct ModInfo {
@@ -17,7 +18,7 @@ impl IntoLua<'_> for ModInfo {
     fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let table = lua.create_table()?;
         let download_mod = self.clone();
-        let download_func = lua.create_function(move|lua, ()| download_mod.download(lua))?;
+        let download_func = lua.create_function(move |lua, ()| download_mod.download(lua))?;
         table.set("url", self.url)?;
         table.set("id", self.id)?;
         table.set("name", self.name)?;
@@ -58,7 +59,7 @@ pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
     let url = format!("https://github.com/{}/{}/releases/download/{}/{}.tar.gz", owner, repo, version, id);
     let response = client.get(url.clone()).send().expect("Failed to get response");
     let body = response.bytes().expect("Failed to get body");
-    let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+    let love_dir = get_love_dir(lua).expect("Failed to get love dir");
     let mods_dir = format!("{}/mods", love_dir);
     let mod_dir = format!("{}/{}", mods_dir, id);
     std::fs::create_dir_all(&mod_dir)?;
@@ -133,7 +134,7 @@ fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> 
 }
 
 pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
-    let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+    let love_dir = get_love_dir(lua)?;
     let mods_dir = format!("{}/mods", love_dir);
     let mods = std::fs::read_dir(mods_dir)?;
     let mod_dirs = mods.filter(|entry| entry.as_ref().unwrap().path().is_dir());
@@ -209,7 +210,7 @@ impl IntoLua<'_> for LocalMod {
 
 impl LocalMod {
     pub fn delete(&self, lua: &Lua) -> LuaResult<()> {
-        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let love_dir = get_love_dir(lua)?;
         let mods_dir = format!("{}/mods", love_dir);
         let mod_dir = format!("{}/{}", mods_dir, self.id);
         std::fs::remove_dir_all(mod_dir)?;
@@ -233,7 +234,7 @@ impl LocalMod {
 
     pub fn save_config(&self, lua: &Lua, table: LuaValue) -> LuaResult<()> {
         let json = lua_to_json(table)?;
-        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let love_dir = get_love_dir(lua)?;
         let mods_dir = format!("{}/mods", love_dir);
         let mod_dir = format!("{}/{}", mods_dir, self.id);
         let config_file = format!("{}/config.json", mod_dir);
@@ -242,7 +243,7 @@ impl LocalMod {
     }
 
     pub fn load_config<'lua>(&self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
-        let love_dir = lua.load("love.filesystem.getSaveDirectory()").eval::<String>()?;
+        let love_dir = get_love_dir(lua)?;
         let mods_dir = format!("{}/mods", love_dir);
         let mod_dir = format!("{}/{}", mods_dir, self.id);
         let config_file = format!("{}/config.json", mod_dir);
@@ -252,6 +253,6 @@ impl LocalMod {
         }
 
         let json = std::fs::read_to_string(config_file)?;
-       json_to_lua(lua, json)
+        json_to_lua(lua, json)
     }
 }

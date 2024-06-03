@@ -109,3 +109,7 @@ fn json_value_to_lua_value(lua: &Lua, value: serde_json::Value) -> LuaResult<Val
         }
     }
 }
+
+pub fn get_love_dir(lua: &Lua) -> LuaResult<String> {
+    lua.load("love.filesystem.getSaveDirectory()").eval::<String>()
+}
