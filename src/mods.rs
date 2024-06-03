@@ -15,13 +15,14 @@ pub struct ModInfo {
 impl IntoLua<'_> for ModInfo {
     fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let table = lua.create_table()?;
+        let download_mod = self.clone();
+        let download_func = lua.create_function(move|lua, ()| download_mod.download(lua))?;
         table.set("url", self.url)?;
         table.set("id", self.id)?;
         table.set("name", self.name)?;
         table.set("description", self.description)?;
         table.set("version", self.version)?;
         table.set("authors", self.authors)?;
-        let download_func = lua.create_function(|lua, mod_info: ModInfo| download_mod(lua, mod_info))?;
         table.set("download", download_func)?;
         Ok(LuaValue::Table(table))
     }
@@ -38,6 +39,12 @@ impl FromLua<'_> for ModInfo {
             version: table.get("version")?,
             authors: table.get("authors")?,
         })
+    }
+}
+
+impl ModInfo {
+    pub fn download(&self, lua: &Lua) -> LuaResult<()> {
+        download_mod(lua, self.clone())
     }
 }
 
