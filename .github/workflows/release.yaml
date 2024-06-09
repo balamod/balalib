@@ -24,6 +24,8 @@ jobs:
         run: |
           export VERSION=${{ github.event.release.tag_name }}
           sed -i "s/0.0.0/$VERSION/g" Cargo.toml
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'github@users.noreply.github.com'
           git add Cargo.toml
           git commit -m "bump version to $VERSION"
           git push ${{ steps.env.outputs.remote }} ${{ steps.env.outputs.default-branch }}
