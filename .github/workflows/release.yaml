@@ -1,0 +1,75 @@
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup environment
+        id: env
+        run: |
+          REMOTE=$(git remote show | cut -d' ' -f1)
+          DEFAULT_BRANCH=$(git remote show $REMOTE | sed -n '/HEAD branch/s/.*: //p')
+          echo "remote=$REMOTE" >> $GITHUB_OUTPUT
+          echo "default-branch=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: 📝 Update version from git tag
+        run: |
+          export VERSION=${{ github.event.release.tag_name }}
+          sed -i "s/0.0.0/$VERSION/g" Cargo.toml
+          git add Cargo.toml
+          git commit -m "bump version to $VERSION"
+          git push ${{ steps.env.outputs.remote }} ${{ steps.env.outputs.default-branch }}
+
+  build:
+    needs: update-version
+    strategy:
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+
+      - name: ⬇️ Get Current Release
+        id: get-release
+        uses: joutvhu/get-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⬇️ Setup rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: 📦 Build library
+        run: cargo build --release
+
+      - name: 🚀 Push library to release assets
+        uses: actions/upload-release-asset@v1
+        if: matrix.os == 'windows-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload-url }}
+          asset_path: 'target/release/libbalalib.dll'
+          asset_name: 'libbalalib.dll'
+          asset_content_type: application/octet-stream
+
+      - name: 🚀 Push library to release assets
+        uses: actions/upload-release-asset@v1
+        if: matrix.os == 'macos-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload-url }}
+          asset_path: 'target/release/libbalalib.dylib'
+          asset_name: 'libbalalib.so'
+          asset_content_type: application/octet-stream

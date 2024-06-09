@@ -150,3 +150,8 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
         .unwrap();
     Ok(())
 }
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+pub fn self_update(cli_ver: &str) -> LuaResult<()> {
+    Ok(())
+}
