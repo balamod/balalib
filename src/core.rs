@@ -9,7 +9,7 @@ pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
     let client = reqwest::blocking::Client::builder().user_agent("balamod_lua").build().unwrap();
 
 
-    return match client.get("https://api.github.com/repos/balamod/balamod_lua/releases").send() {
+    match client.get("https://api.github.com/repos/balamod/balamod_lua/releases").send() {
         Ok(response) => {
             match response.text() {
                 Ok(text) => {
@@ -137,22 +137,11 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.exe").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
-    let mut bat_file = std::fs::File::create("update.bat").unwrap();
-    bat_file.write_all(b"taskkill /IM balatro.exe /F\n").unwrap();
-    bat_file.write_all(b"balamod.exe -u\n").unwrap();
-    bat_file.write_all(b"balamod.exe -a\n").unwrap();
-    bat_file.write_all(b"del update.bat\n").unwrap();
-    bat_file.write_all(b"exit\n").unwrap();
-
-    std::process::Command::new("cmd")
-        .args(&["/C", "start", "update.bat"])
-        .spawn()
-        .unwrap();
-    Ok(())
+    restart()?;
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-pub fn self_update(cli_ver: &str) -> LuaResult<()> {
+pub fn self_update(_cli_ver: &str) -> LuaResult<()> {
     Ok(())
 }
 
