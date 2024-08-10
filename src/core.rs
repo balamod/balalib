@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::env;
 use mlua::{Lua, Table, Value};
 use mlua::prelude::LuaResult;
 use serde_json::Value as JsonValue;
@@ -153,5 +153,25 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn self_update(cli_ver: &str) -> LuaResult<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub fn restart() -> LuaResult<()> {
+    let exe_path = env::current_exe()?;
+    let args: Vec<String> = env::args().collect();
+    Command::new(exe_path)
+        .args(&args)
+        .spawn()?;
+    Ok(())
+}
+
+pub fn restart() -> LuaResult<()> {
+    use std::ffi::OsString;
+    use std::os::unix::prelude::CommandExt;
+    let args: Vec<OsString> = env::args_os().skip(1).collect();
+    std::process::Command::new("/proc/self/exe")
+        .args(&args)
+        .exec();
     Ok(())
 }

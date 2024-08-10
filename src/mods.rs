@@ -77,7 +77,7 @@ pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Err
 
 pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
     let client = reqwest::blocking::Client::new();
-    return match client.get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index").send() {
+    match client.get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index").send() {
         Ok(response) => {
             match response.text() {
                 Ok(text) => {
@@ -106,7 +106,7 @@ pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
         Err(e) => {
             Err(LuaError::RuntimeError(format!("Error: {}", e)))
         }
-    };
+    }
 }
 
 fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> {
@@ -141,7 +141,7 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
 
     let mut local_mods = Vec::new();
     for mod_dir in mod_dirs {
-        let mod_dir: String = mod_dir.unwrap().path().display().to_string();
+        let mod_dir: String = mod_dir?.path().display().to_string();
         let manifest_file = format!("{}/manifest.json", mod_dir.clone());
         if !std::path::Path::new(&manifest_file).exists() {
             continue;
@@ -228,7 +228,7 @@ impl LocalMod {
             }
             None => {
                 println!("Mod not found in the repo: {}", self.id);
-                return Err(LuaError::RuntimeError(format!("Mod not found in the repo: {}", self.id)));
+                Err(LuaError::RuntimeError(format!("Mod not found in the repo: {}", self.id)))
             }
         }
     }
