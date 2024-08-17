@@ -90,7 +90,7 @@ jobs:
         with:
           upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/balalib.dll'
-          asset_name: 'libbalalib.dll'
+          asset_name: 'balalib.dll'
           asset_content_type: application/octet-stream
 
       - name: 🚀 Push library to release assets (Linux)
@@ -101,7 +101,7 @@ jobs:
         with:
           upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/libbalalib.so'
-          asset_name: 'libbalalib.so'
+          asset_name: 'balalib.so'
           asset_content_type: application/octet-stream
 
       - name: 🚀 Push library to release assets (MacOS)
@@ -112,5 +112,5 @@ jobs:
         with:
           upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/libbalalib.dylib'
-          asset_name: 'libbalalib.dylib'
+          asset_name: 'balalib.dylib'
           asset_content_type: application/octet-stream
