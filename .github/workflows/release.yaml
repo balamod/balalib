@@ -36,11 +36,18 @@ jobs:
       matrix:
         os:
           - windows-latest
+          - ubuntu-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
+
+      - name: ⚙️ Install UPX on windows
+        if: matrix.os == 'windows-latest'
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
 
       - name: ⬇️ Get Current Release
         id: get-release
@@ -54,6 +61,10 @@ jobs:
       - name: 📦 Build library
         run: cargo build --release
 
+      - name: 📦 Compress DLL with UPX on windows
+        if: matrix.os == 'windows-latest'
+        run: upx --best --lzma target/release/balalib.dll
+
       - name: 🚀 Push library to release assets
         uses: actions/upload-release-asset@v1
         if: matrix.os == 'windows-latest'
@@ -61,8 +72,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.get-release.outputs.upload-url }}
-          asset_path: 'target/release/libbalalib.dll'
+          asset_path: 'target/release/balalib.dll'
           asset_name: 'libbalalib.dll'
+          asset_content_type: application/octet-stream
+
+      - name: 🚀 Push library to release assets
+        uses: actions/upload-release-asset@v1
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload-url }}
+          asset_path: 'target/release/libbalalib.so'
+          asset_name: 'libbalalib.so'
           asset_content_type: application/octet-stream
 
       - name: 🚀 Push library to release assets
@@ -73,5 +95,5 @@ jobs:
         with:
           upload_url: ${{ needs.get-release.outputs.upload-url }}
           asset_path: 'target/release/libbalalib.dylib'
-          asset_name: 'libbalalib.so'
+          asset_name: 'libbalalib.dylib'
           asset_content_type: application/octet-stream
