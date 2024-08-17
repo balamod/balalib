@@ -2,7 +2,6 @@ use jsonschema::JSONSchema;
 use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 use crate::VERSION;
 
@@ -77,7 +76,7 @@ pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-pub fn fetch_mods(_: &Lua, _: ()) -> LuaResult<Vec<ModInfo>> {
+pub fn fetch_mods() -> LuaResult<Vec<ModInfo>> {
     let client = reqwest::blocking::Client::new();
     match client.get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index").send() {
         Ok(response) => {
@@ -135,101 +134,10 @@ fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> 
     Ok(mod_infos)
 }
 
-pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
-    let schema = json!({
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$defs": {
-            "version": {
-              "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-            },
-            "versionConstraint": {
-              "type": "string",
-              "pattern": "^(\\^|>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?(, ?(>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?)?$"
-            },
-            "id": {
-              "type": "string",
-              "pattern": "[a-z0-9_\\-]+"
-            },
-            "authorName": {
-              "type": "string",
-              "pattern": "[A-Za-z0-9]+( <.+@[a-z0-9]+\\.[a-z\\.]{3,}>)?"
-            }
-          },
-          "type": "object",
-          "required": [
-            "id",
-            "name",
-            "version",
-            "description",
-            "author",
-            "load_before",
-            "load_after"
-          ],
-          "properties": {
-            "id": {
-              "$ref": "#/$defs/id"
-            },
-            "name": {
-              "type": "string"
-            },
-            "version": {
-              "$ref": "#/$defs/version"
-            },
-            "description": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "maxLength": 50
-              }
-            },
-            "author": {
-              "oneOf": [
-                {
-                  "$ref": "#/$defs/authorName"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/authorName"
-                  }
-                }
-              ]
-            },
-            "load_before": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/version"
-              }
-            },
-            "load_after": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/version"
-              }
-            },
-            "min_balamod_version": {
-              "$ref": "#/$defs/version"
-            },
-            "max_balamod_version": {
-              "$ref": "#/$defs/version"
-            },
-            "balalib_version": {
-              "$ref": "#/$defs/versionConstraint"
-            },
-            "dependencies": {
-              "type": "object",
-              "patternProperties": {
-                "^[a-z0-9_\\-]+$": {
-                  "$ref": "#/$defs/versionConstraint"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-    });
-    let compiled_schema = JSONSchema::compile(&schema).expect("A valid schema");
+pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
+    let schema = include_bytes!("schema/manifest.schema.json");
+    let schema: serde_json::Value = serde_json::from_slice(schema).expect("Invalid schema");
+    let compiled_schema = JSONSchema::compile(&schema).expect("Invalid schema");
 
     let love_dir = get_love_dir(lua)?;
     let mods_dir = format!("{}/mods", love_dir);

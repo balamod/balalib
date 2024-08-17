@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "versionConstraint": {
+      "type": "string",
+      "pattern": "^(\\^|>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?(, ?(>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?)?$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "[a-z0-9_\\-]+"
+    },
+    "authorName": {
+      "type": "string",
+      "pattern": "[A-Za-z0-9]+( <.+@[a-z0-9]+\\.[a-z\\.]{3,}>)?"
+    }
+  },
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "description",
+    "author",
+    "load_before",
+    "load_after"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    },
+    "description": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      }
+    },
+    "author": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/authorName"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/authorName"
+          }
+        }
+      ]
+    },
+    "load_before": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/version"
+      }
+    },
+    "load_after": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/version"
+      }
+    },
+    "min_balamod_version": {
+      "$ref": "#/$defs/version"
+    },
+    "max_balamod_version": {
+      "$ref": "#/$defs/version"
+    },
+    "balalib_version": {
+      "$ref": "#/$defs/versionConstraint"
+    },
+    "dependencies": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z0-9_\\-]+$": {
+          "$ref": "#/$defs/versionConstraint"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

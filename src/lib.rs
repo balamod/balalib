@@ -1,12 +1,15 @@
 use mlua::prelude::*;
 use mlua::Value;
-use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, self_update, setup_injection};
+use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection};
 
 use crate::mods::*;
+use crate::updater::self_update;
 
 mod mods;
 mod core;
 mod utils;
+mod updater;
+mod tests;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -19,8 +22,8 @@ fn echo(_: &Lua, name: String) -> LuaResult<String> {
 fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     let exports = lua.create_table()?;
     exports.set("echo", lua.create_function(echo)?)?;
-    exports.set("fetch_mods", lua.create_function(|lua, ()| fetch_mods(lua, ()))?)?;
-    exports.set("get_local_mods", lua.create_function(|lua, ()| get_local_mods(lua, ()))?)?;
+    exports.set("fetch_mods", lua.create_function(|_, ()| fetch_mods())?)?;
+    exports.set("get_local_mods", lua.create_function(|lua, ()| get_local_mods(lua))?)?;
     exports.set("need_update", lua.create_function(|lua, ()| need_update(lua, ()))?)?;
     exports.set("download_mod", lua.create_function(|lua, mod_info: ModInfo| download_mod(lua, mod_info))?)?;
     exports.set("lua_to_json", lua.create_function(|_, table: Value| lua_to_json(table))?)?;
