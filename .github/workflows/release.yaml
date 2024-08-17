@@ -83,7 +83,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.get-release.outputs.upload-url }}
+          upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/balalib.dll'
           asset_name: 'libbalalib.dll'
           asset_content_type: application/octet-stream
@@ -94,7 +94,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.get-release.outputs.upload-url }}
+          upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/libbalalib.so'
           asset_name: 'libbalalib.so'
           asset_content_type: application/octet-stream
@@ -105,7 +105,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.get-release.outputs.upload-url }}
+          upload_url: ${{ steps.get-release.outputs.upload_url }}
           asset_path: 'target/release/libbalalib.dylib'
           asset_name: 'libbalalib.dylib'
           asset_content_type: application/octet-stream
