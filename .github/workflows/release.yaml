@@ -8,6 +8,9 @@ permissions:
 jobs:
   update-version:
     runs-on: ubuntu-latest
+    outputs:
+      default-branch: ${{ steps.env.outputs.default-branch }}
+      remote: ${{ steps.env.outputs.remote }}
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4.1.7
@@ -45,6 +48,12 @@ jobs:
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4.1.7
+
+      - name: ⬇️ Force fetch of repo to get the absolute latest version
+        run: |
+          git fetch --tags
+          git checkout ${{ needs.update-version.outputs.default-branch }}
+          git pull ${{ needs.update-version.outputs.remote }} ${{ needs.update-version.outputs.default-branch }}
 
       - name: ⚙️ Install UPX on windows
         if: matrix.os == 'windows-latest'
