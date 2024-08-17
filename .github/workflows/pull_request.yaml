@@ -5,9 +5,93 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: write
 
 jobs:
-  build:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check for errors
+          status: in_progress
+      - name: ✅ Check for errors
+        run: cargo check
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check linting
+          status: in_progress
+      - name: ✅ Check linting
+        run: cargo clippy --message-format human --all
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check formatting
+          status: in_progress
+      - name: ✅ Check formatting
+        run: cargo fmt --check --message-format human --all
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout
@@ -25,14 +109,13 @@ jobs:
       - name: ⚙️ Install grcov
         uses: actions-rs/grcov@v0.1.5
 
-      - name: ✅ Check linting
-        run: cargo clippy --message-format human --all
-
-      - name: ✅ Check for errors
-        run: cargo check
-
-      - name: ✅ Check formatting
-        run: cargo fmt --check --message-format human --all
+      - name: Init check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Run tests with coverage
+          status: in_progress
 
       - name: ✅ Run tests with coverage
         run: |
@@ -44,3 +127,11 @@ jobs:
         uses: romeovs/lcov-reporter-action@v0.4.0
         with:
           lcov-file: target/coverage/tests.lcov
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
