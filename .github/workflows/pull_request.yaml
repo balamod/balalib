@@ -1,0 +1,45 @@
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+
+      - name: ⚙️ Install grcov
+        run: cargo install grcov
+
+      - name: ⚙️ Install llvm-tools-preview
+        run: rustup component add llvm-tools-preview
+
+      - name: ✅ Check formatting
+        run: cargo fmt --check --message-format human --all
+
+      - name: ✅ Check linting
+        run: cargo clippy --message-format human --all
+
+      - name: ✅ Test building in release mode
+        run: cargo build --release
+
+      - name: ✅ Run tests with coverage
+        run: |
+          mkdir -p target/coverage
+          CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
+          grcov . --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/tests.lcov
+
+      - name: 📝 Comment lcov Code Coverage Report
+        uses: romeovs/lcov-reporter-action@v0.4.0
+        with:
+          lcov-file: target/coverage/tests.lcov
