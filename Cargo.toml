@@ -1,6 +1,6 @@
 [package]
 name = "balalib"
-version = "0.1.2"
+version = "1.0.10"
 edition = "2021"
 
 [lib]
