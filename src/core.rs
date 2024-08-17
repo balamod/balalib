@@ -9,34 +9,7 @@ use std::process::Command;
 
 pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
     let current_version = lua.load("require('balamod_version')").eval::<String>()?;
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("balamod_lua")
-        .build()
-        .unwrap();
-
-    match client
-        .get("https://api.github.com/repos/balamod/balamod_lua/releases")
-        .send()
-    {
-        Ok(response) => match response.text() {
-            Ok(text) => {
-                let releases: Vec<serde_json::Value> = serde_json::from_str(&text)
-                    .unwrap_or_else(|_| panic!("Failed to parse json: {}", text));
-                let latest_version = releases
-                    .iter()
-                    .find(|release| {
-                        !release["prerelease"].as_bool().unwrap()
-                            && !release["draft"].as_bool().unwrap()
-                    })
-                    .unwrap()["tag_name"]
-                    .as_str()
-                    .unwrap();
-                Ok(current_version != latest_version)
-            }
-            Err(_) => Ok(false),
-        },
-        Err(_) => Ok(false),
-    }
+    super::updater::need_update(current_version)
 }
 
 fn lua_value_to_json_value(value: &Value) -> JsonValue {
@@ -54,16 +27,18 @@ fn lua_value_to_json_value(value: &Value) -> JsonValue {
 fn table_to_json_value(table: &Table) -> JsonValue {
     let mut map = serde_json::Map::new();
     let table_clone = table.clone();
-    for (key, value) in table_clone.pairs::<Value, Value>().flatten() {
-        if let Value::String(k) = key {
-            map.insert(
-                k.to_str().unwrap().to_string(),
-                lua_value_to_json_value(&value),
-            );
-        } else if let Value::Integer(k) = key {
-            map.insert(k.to_string(), lua_value_to_json_value(&value));
-        } else if let Value::Number(k) = key {
-            map.insert(k.to_string(), lua_value_to_json_value(&value));
+    for pair in table_clone.pairs::<Value, Value>() {
+        if let Ok((key, value)) = pair {
+            if let Value::String(k) = key {
+                map.insert(
+                    k.to_str().unwrap().to_string(),
+                    lua_value_to_json_value(&value),
+                );
+            } else if let Value::Integer(k) = key {
+                map.insert(k.to_string(), lua_value_to_json_value(&value));
+            } else if let Value::Number(k) = key {
+                map.insert(k.to_string(), lua_value_to_json_value(&value));
+            }
         }
     }
     JsonValue::Object(map)
@@ -138,27 +113,6 @@ pub fn is_mod_present(lua: &Lua, mod_info: ModInfo) -> LuaResult<bool> {
 
     let main_path = format!("{}/main.lua", mod_dir);
     Ok(Path::new(&main_path).exists())
-}
-
-#[cfg(target_os = "windows")]
-pub fn self_update(cli_ver: &str) -> LuaResult<()> {
-    let url = format!(
-        "https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe",
-        cli_ver, cli_ver
-    );
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("balalib")
-        .build()
-        .unwrap();
-    let mut response = client.get(&url).send().unwrap();
-    let mut file = std::fs::File::create("balamod.exe").unwrap();
-    std::io::copy(&mut response, &mut file).unwrap();
-    restart()?
-}
-
-#[cfg(any(target_os = "macos", target_os = "linux"))]
-pub fn self_update(_cli_ver: &str) -> LuaResult<()> {
-    Ok(())
 }
 
 #[cfg(target_os = "windows")]
