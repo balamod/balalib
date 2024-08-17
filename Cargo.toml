@@ -11,7 +11,7 @@ mlua = { version = "0.9.6", features = ["lua51", "macros", "serialize", "module"
 serde_json = "1.0.125"
 reqwest = { version = "0.12.5", features = ["json", "blocking"] }
 serde = { version = "1.0.208", features = ["derive"] }
-tar = "0.4.40"
+tar = "0.4.41"
 flate2 = "1.0.30"
 zip = "2.1.6"
 regex = "1.10.6"
