@@ -1,8 +1,10 @@
+use jsonschema::JSONSchema;
 use mlua::{FromLua, IntoLua, Lua};
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use serde::{Deserialize, Serialize};
-
+use serde_json::json;
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
+use crate::VERSION;
 
 #[derive(Debug, Clone)]
 pub struct ModInfo {
@@ -134,14 +136,113 @@ fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> 
 }
 
 pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
+    let schema = json!({
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$defs": {
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "versionConstraint": {
+              "type": "string",
+              "pattern": "^(\\^|>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?(, ?(>|>=|<|<=)? ?[0-9]+(\\.[0-9]+(\\.[0-9]+)?)?)?$"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "[a-z0-9_\\-]+"
+            },
+            "authorName": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9]+( <.+@[a-z0-9]+\\.[a-z\\.]{3,}>)?"
+            }
+          },
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "version",
+            "description",
+            "author",
+            "load_before",
+            "load_after"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "$ref": "#/$defs/version"
+            },
+            "description": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 50
+              }
+            },
+            "author": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/authorName"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/authorName"
+                  }
+                }
+              ]
+            },
+            "load_before": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/version"
+              }
+            },
+            "load_after": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/version"
+              }
+            },
+            "min_balamod_version": {
+              "$ref": "#/$defs/version"
+            },
+            "max_balamod_version": {
+              "$ref": "#/$defs/version"
+            },
+            "balalib_version": {
+              "$ref": "#/$defs/versionConstraint"
+            },
+            "dependencies": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-z0-9_\\-]+$": {
+                  "$ref": "#/$defs/versionConstraint"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+    });
+    let compiled_schema = JSONSchema::compile(&schema).expect("A valid schema");
+
     let love_dir = get_love_dir(lua)?;
     let mods_dir = format!("{}/mods", love_dir);
     let mods = std::fs::read_dir(mods_dir)?;
     let mod_dirs = mods.filter(|entry| entry.as_ref().unwrap().path().is_dir());
 
     let mut local_mods = Vec::new();
+
+    let balamod_version = lua.load("require 'balamod_version'").eval::<String>()?;
+
     for mod_dir in mod_dirs {
         let mod_dir: String = mod_dir?.path().display().to_string();
+        lua.load(format!("require('logging').getLogger('balalib'):info('Verifying mod {}')", mod_dir.clone())).exec()?;
         let manifest_file = format!("{}/manifest.json", mod_dir.clone());
         if !std::path::Path::new(&manifest_file).exists() {
             continue;
@@ -151,13 +252,77 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
         }
 
         let manifest = std::fs::read_to_string(manifest_file)?;
+        let manifest_json: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+        let validation = compiled_schema.validate(&manifest_json);
+        if let Err(errors) = validation {
+            for error in errors {
+                println!("Validation error: {}", error);
+                //lua.load(format!("require('logging').getLogger('balalib'):error('Validation error: {}')", error)).exec()?;
+                println!("Instance path: {}", error.instance_path);
+                //lua.load(format!("require('logging').getLogger('balalib'):error('Instance path: {}')", error.instance_path)).exec()?;
+            }
+            //return Err(LuaError::RuntimeError(format!("Invalid manifest.json for mod: {}", mod_dir)));
+            continue;
+        }
+
         let mut manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
+
+        match manifest.clone().balalib_version {
+            Some(balalib_version) => {
+                match balalib_version.chars().next().unwrap() {
+                    '>' => {
+                        let balalib_version = balalib_version.split(">").nth(1).unwrap();
+                        if balalib_version <= VERSION {
+                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                            continue;
+                        }
+                    }
+                    '<' => {
+                        let balalib_version = balalib_version.split("<").nth(1).unwrap();
+                        if balalib_version >= VERSION {
+                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                            continue;
+                        }
+                    }
+                    '=' => {
+                        let balalib_version = balalib_version.split("=").nth(1).unwrap();
+                        if balalib_version != VERSION {
+                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None => {}
+        }
+
+        match manifest.clone().min_balamod_version {
+            Some(min_balamod_version) => {
+                if balamod_version < min_balamod_version {
+                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", min_balamod_version, manifest.id)).exec()?;
+                    continue;
+                }
+            }
+            None => {}
+        }
+
+        match manifest.clone().max_balamod_version {
+            Some(max_balamod_version) => {
+                if balamod_version > max_balamod_version {
+                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", max_balamod_version, manifest.id)).exec()?;
+                    continue;
+                }
+            }
+            None => {}
+        }
 
         let folder_name = mod_dir.split("/").last().unwrap();
         let folder_name = folder_name.split("\\").last().unwrap();
 
         if manifest.id != folder_name {
-            return Err(LuaError::RuntimeError(format!("Mod id in manifest.json does not match folder name: {} != {}", manifest.id, folder_name)));
+            lua.load(format!("require('logging').getLogger('balalib'):error('Mod id in manifest.json does not match folder name: {} != {}')", manifest.id, folder_name)).exec()?;
+            continue;
         }
 
         manifest.enabled = !std::path::Path::new(&format!("{}/disable.it", mod_dir)).exists();
@@ -181,6 +346,7 @@ pub struct LocalMod {
     pub load_after: Vec<String>,
     pub min_balamod_version: Option<String>,
     pub max_balamod_version: Option<String>,
+    pub balalib_version: Option<String>,
 }
 
 impl IntoLua<'_> for LocalMod {
