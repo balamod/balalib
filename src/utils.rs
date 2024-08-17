@@ -150,7 +150,6 @@ pub fn get_lua_files() -> HashMap<String, String> {
                 let mut content = String::new();
                 file.read_to_string(&mut content).unwrap();
                 map.insert(entry.replace(".lua", ""), content);
-                println!("Isnerted: {}", entry.replace(".lua", ""));
             }
         }
 

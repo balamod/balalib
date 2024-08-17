@@ -186,7 +186,6 @@ pub fn setup_injection(lua: &Lua) -> LuaResult<()> {
                 code = minify_lua(code);
             }
             file_table.set(fn_name.clone(), code)?;
-            println!("File: {}, Function: {}", name, fn_name);
         }
         table.set(name, file_table)?;
     }
@@ -201,7 +200,6 @@ pub fn inject(lua: &Lua, file: String, function: String, code_to_find: String, c
     let code_to_find = minify_lua(code_to_find);
 
     let function_code = lua.load(format!("return game_state['{}']['{}']", file, function).as_str()).eval::<String>()?;
-    println!("{}", function_code);
 
     if function_code.contains(&code_to_find) {
         let new_code = function_code.replace(&code_to_find, &code_to_insert);
