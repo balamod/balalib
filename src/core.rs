@@ -120,6 +120,7 @@ pub fn restart() -> LuaResult<()> {
     let exe_path = env::current_exe()?;
     let args: Vec<String> = env::args().collect();
     Command::new(exe_path).args(&args).spawn()?;
+    std::process::exit(0);
     Ok(())
 }
 
