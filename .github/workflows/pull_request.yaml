@@ -97,6 +97,14 @@ jobs:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4.1.7
 
+      - name: Init check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Run tests with coverage
+          status: in_progress
+
       - name: ⚙️ Install Rust
         uses: actions-rs/toolchain@v1.0.6
         with:
@@ -106,13 +114,6 @@ jobs:
       - name: ⚙️ Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
 
-      - name: Init check
-        uses: LouisBrunner/checks-action@v2.0.0
-        id: init
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: Run tests with coverage
-          status: in_progress
 
       - name: ✅ Run tests with coverage
         run: |
