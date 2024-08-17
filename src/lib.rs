@@ -1,11 +1,12 @@
 use mlua::prelude::*;
 use mlua::Value;
-use crate::core::{is_mod_present, json_to_lua, lua_to_json, need_update, restart, self_update};
+use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, self_update, setup_injection};
 
 use crate::mods::*;
 
 mod mods;
 mod core;
+mod utils;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -27,6 +28,8 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("is_mod_present", lua.create_function(|lua, mod_info: ModInfo| is_mod_present(lua, mod_info))?)?;
     exports.set("self_update", lua.create_function(|_, ()| self_update("v0.1.11"))?)?;
     exports.set("restart", lua.create_function(|_, ()| restart())?)?;
+    exports.set("setup_injection", lua.create_function(|lua, ()| setup_injection(lua))?)?;
+    exports.set("inject", lua.create_function(|lua, (file, function, code_to_find, code_to_insert): (String, String, String, String)| inject(lua, file, function, code_to_find, code_to_insert))?)?;
     exports.set("version", VERSION)?;
     lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str()).exec()?;
     Ok(exports)

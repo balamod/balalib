@@ -1,6 +1,6 @@
 [package]
 name = "balalib"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [lib]
@@ -13,6 +13,8 @@ serde_json = "1.0.115"
 serde = { version = "1.0.197", features = ["derive"] }
 tar = "0.4.40"
 flate2 = "1.0.30"
+zip = "2.1.6"
+regex = "1.10.6"
 
 [profile.release]
 opt-level = "z"
