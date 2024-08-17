@@ -15,8 +15,8 @@ jobs:
       - name: ⚙️ Setup environment
         id: env
         run: |
-          REMOTE=$(git remote show | cut -d' ' -f1)
-          DEFAULT_BRANCH=$(git remote show $REMOTE | sed -n '/HEAD branch/s/.*: //p')
+          export REMOTE=$(git remote show | cut -d' ' -f1)
+          export DEFAULT_BRANCH=$(git remote show $REMOTE | sed -n '/HEAD branch/s/.*: //p')
           echo "remote=$REMOTE" >> $GITHUB_OUTPUT
           echo "default-branch=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
 
