@@ -1,3 +1,4 @@
+use std::process::Command;
 use crate::mods::ModInfo;
 use crate::utils::{extract_functions, get_lua_files, minify_lua};
 use mlua::prelude::LuaResult;
@@ -139,7 +140,7 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.exe").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
-    restart()?;
+    restart()?
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -157,11 +158,12 @@ pub fn restart() -> LuaResult<()> {
     Ok(())
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn restart() -> LuaResult<()> {
     use std::ffi::OsString;
     use std::os::unix::prelude::CommandExt;
     let args: Vec<OsString> = env::args_os().skip(1).collect();
-    std::process::Command::new("/proc/self/exe")
+    Command::new("/proc/self/exe")
         .args(&args)
         .exec();
     Ok(())
