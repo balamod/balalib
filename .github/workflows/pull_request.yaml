@@ -126,7 +126,7 @@ jobs:
       - name: 📝 Comment Code Coverage Report
         uses: romeovs/lcov-reporter-action@v0.4.0
         with:
-          lcov-file: target/coverage/tests.lcov
+          lcov-file: lcov.info
 
       - name: ⚙️ Update GitHub check
         uses: LouisBrunner/checks-action@v2.0.0
