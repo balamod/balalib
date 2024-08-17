@@ -46,10 +46,10 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.tmp").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
-    std::fs::rename("balamod.tmp", "balamod")?;
+    std::fs::rename("balamod.tmp", "balamod.exe")?;
     drop(file);
 
-    let output = std::process::Command::new("balamod")
+    let output = std::process::Command::new("balamod.exe")
         .arg("-u")
         .arg("-a")
         .output()?;
