@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "balalib"
-version = "1.0.12"
+version = "1.0.15"
 dependencies = [
  "flate2",
  "jsonschema",
