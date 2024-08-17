@@ -19,20 +19,20 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: ⚙️ Install grcov
-        run: cargo install grcov
-
       - name: ⚙️ Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
 
-      - name: ✅ Check formatting
-        run: cargo fmt --check --message-format human --all
+      - name: ⚙️ Install grcov
+        uses: actions-rs/grcov@v0.1.5
 
       - name: ✅ Check linting
         run: cargo clippy --message-format human --all
 
-      - name: ✅ Test compilation in release mode (Linux only)
-        run: cargo build --release
+      - name: ✅ Check for errors
+        run: cargo check
+
+      - name: ✅ Check formatting
+        run: cargo fmt --check --message-format human --all
 
       - name: ✅ Run tests with coverage
         run: |
