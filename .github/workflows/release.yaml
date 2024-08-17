@@ -23,9 +23,10 @@ jobs:
 
       - name: 📝 Update version from git tag
         run: |
-          sed -i --regexp-extended --expression="s/^version = \"[0-9\.]+\"/version = \"${{ github.event.release.tag_name }}\"/g" Cargo.toml
           git config --global user.name 'GitHub Action'
           git config --global user.email 'github@users.noreply.github.com'
+          git checkout ${{ steps.env.outputs.default-branch }}
+          sed -i --regexp-extended --expression="s/^version = \"[0-9\.]+\"/version = \"${{ github.event.release.tag_name }}\"/g" Cargo.toml
           git add Cargo.toml
           git commit -m "bump version to ${{ github.event.release.tag_name }}"
           git push ${{ steps.env.outputs.remote }} ${{ steps.env.outputs.default-branch }}
