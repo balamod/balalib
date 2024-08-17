@@ -66,7 +66,7 @@ pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
     let mod_dir = format!("{}/{}", mods_dir, id);
     std::fs::create_dir_all(&mod_dir)?;
     let tar = body.to_vec();
-    unpack_tar(&mod_dir, tar.clone()).expect(format!("Failed to unpack tar: {}", url).as_str());
+    unpack_tar(&mod_dir, tar.clone()).unwrap_or_else(|_| panic!("Failed to unpack tar: {}", url));
     Ok(())
 }
 
@@ -267,54 +267,45 @@ pub fn get_local_mods(lua: &Lua, _: ()) -> LuaResult<Vec<LocalMod>> {
 
         let mut manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
 
-        match manifest.clone().balalib_version {
-            Some(balalib_version) => {
-                match balalib_version.chars().next().unwrap() {
-                    '>' => {
-                        let balalib_version = balalib_version.split(">").nth(1).unwrap();
-                        if balalib_version <= VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
+        if let Some(balalib_version) = manifest.clone().balalib_version {
+            match balalib_version.chars().next().unwrap() {
+                '>' => {
+                    let balalib_version = balalib_version.split(">").nth(1).unwrap();
+                    if balalib_version <= VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
                     }
-                    '<' => {
-                        let balalib_version = balalib_version.split("<").nth(1).unwrap();
-                        if balalib_version >= VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
-                    }
-                    '=' => {
-                        let balalib_version = balalib_version.split("=").nth(1).unwrap();
-                        if balalib_version != VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
-                    }
-                    _ => {}
                 }
+                '<' => {
+                    let balalib_version = balalib_version.split("<").nth(1).unwrap();
+                    if balalib_version >= VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
+                    }
+                }
+                '=' => {
+                    let balalib_version = balalib_version.split("=").nth(1).unwrap();
+                    if balalib_version != VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
+                    }
+                }
+                _ => {}
             }
-            None => {}
         }
 
-        match manifest.clone().min_balamod_version {
-            Some(min_balamod_version) => {
-                if balamod_version < min_balamod_version {
-                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", min_balamod_version, manifest.id)).exec()?;
-                    continue;
-                }
+        if let Some(min_balamod_version) = manifest.clone().min_balamod_version {
+            if balamod_version < min_balamod_version {
+                lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", min_balamod_version, manifest.id)).exec()?;
+                continue;
             }
-            None => {}
         }
 
-        match manifest.clone().max_balamod_version {
-            Some(max_balamod_version) => {
-                if balamod_version > max_balamod_version {
-                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", max_balamod_version, manifest.id)).exec()?;
-                    continue;
-                }
+        if let Some(max_balamod_version) = manifest.clone().max_balamod_version {
+            if balamod_version > max_balamod_version {
+                lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", max_balamod_version, manifest.id)).exec()?;
+                continue;
             }
-            None => {}
         }
 
         let folder_name = mod_dir.split("/").last().unwrap();

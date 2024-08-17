@@ -16,7 +16,7 @@ pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
         Ok(response) => {
             match response.text() {
                 Ok(text) => {
-                    let releases: Vec<serde_json::Value> = serde_json::from_str(&text).expect(format!("Failed to parse json: {}", text).as_str());
+                    let releases: Vec<serde_json::Value> = serde_json::from_str(&text).unwrap_or_else(|_| panic!("Failed to parse json: {}", text));
                     let latest_version = releases.iter().find(|release| {
                         !release["prerelease"].as_bool().unwrap() && !release["draft"].as_bool().unwrap()
                     }).unwrap()["tag_name"].as_str().unwrap();

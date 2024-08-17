@@ -31,7 +31,7 @@ pub fn minify_lua(code: String) -> String {
                                 continue;
                             }
                         } else {
-                            while let Some(next_char) = iter.next() {
+                            for next_char in iter.by_ref() {
                                 if next_char == '\n' {
                                     result.push('\n');
                                     break;
@@ -86,8 +86,8 @@ pub fn minify_lua(code: String) -> String {
     }
 
     let code_without_comments = remove_comments(&code);
-    let minimized_code = minimize_whitespace(&code_without_comments);
-    minimized_code
+    
+    minimize_whitespace(&code_without_comments)
 }
 
 pub fn extract_functions(minified_code: String) -> HashMap<String, String> {
