@@ -4,13 +4,109 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  checks: write
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4.1.7
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check for errors
+          status: in_progress
+      - name: ✅ Check for errors
+        run: cargo check
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check linting
+          status: in_progress
+      - name: ✅ Check linting
+        run: cargo clippy --message-format human --all
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+
+      - name: ⚙️ Install Rust
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+
+      - name: ⚙️ Init GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Check formatting
+          status: in_progress
+
+      - name: ✅ Check formatting
+        run: cargo fmt --check --message-format human --all
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4.1.7
+
+      - name: Init check
+        uses: LouisBrunner/checks-action@v2.0.0
+        id: init
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Run tests with coverage
+          status: in_progress
 
       - name: ⚙️ Install Rust
         uses: actions-rs/toolchain@v1.0.6
@@ -24,22 +120,21 @@ jobs:
       - name: ⚙️ Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
 
-      - name: ✅ Check formatting
-        run: cargo fmt --check --message-format human --all
-
-      - name: ✅ Check linting
-        run: cargo clippy --message-format human --all
-
-      - name: ✅ Test building in release mode
-        run: cargo build --release
-
       - name: ✅ Run tests with coverage
         run: |
           mkdir -p target/coverage
           CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
           grcov . --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/tests.lcov
 
-      - name: 📝 Comment lcov Code Coverage Report
+      - name: 📝 Comment Code Coverage Report
         uses: romeovs/lcov-reporter-action@v0.4.0
         with:
           lcov-file: target/coverage/tests.lcov
+
+      - name: ⚙️ Update GitHub check
+        uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init.outputs.check_id }}
+          conclusion: ${{ job.status }}
