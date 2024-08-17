@@ -1,6 +1,3 @@
-use std::os::unix::fs::PermissionsExt;
-use std::thread::sleep;
-use std::time::Duration;
 use crate::core::restart;
 use mlua::prelude::LuaResult;
 
@@ -49,7 +46,6 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.tmp").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
-    std::fs::set_permissions("balamod.tmp", std::fs::Permissions::from_mode(0o755))?;
     std::fs::rename("balamod.tmp", "balamod")?;
     drop(file);
 
@@ -65,6 +61,8 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
+    use std::os::unix::fs::PermissionsExt;
+
     let mut filename = format!("balamod-{}-", cli_ver);
     if cfg!(target_os = "macos") {
         filename.push_str("mac.pkg");
@@ -94,7 +92,7 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
     println!("Renamed file");
 
     // Ensure the previous instance is completely terminated
-    sleep(Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     //close file
     drop(file);

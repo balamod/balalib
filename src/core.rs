@@ -121,7 +121,6 @@ pub fn restart() -> LuaResult<()> {
     let args: Vec<String> = env::args().collect();
     Command::new(exe_path).args(&args).spawn()?;
     std::process::exit(0);
-    Ok(())
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
