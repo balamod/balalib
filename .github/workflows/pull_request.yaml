@@ -106,9 +106,6 @@ jobs:
       - name: ⚙️ Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
 
-      - name: ⚙️ Install grcov
-        uses: actions-rs/grcov@v0.1.5
-
       - name: Init check
         uses: LouisBrunner/checks-action@v2.0.0
         id: init
@@ -121,7 +118,9 @@ jobs:
         run: |
           mkdir -p target/coverage
           CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
-          grcov . --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/tests.lcov
+
+      - name: ⚙️ Install grcov
+        uses: actions-rs/grcov@v0.1.5
 
       - name: 📝 Comment Code Coverage Report
         uses: romeovs/lcov-reporter-action@v0.4.0
