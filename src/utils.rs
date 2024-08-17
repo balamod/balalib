@@ -1,8 +1,8 @@
+use regex::Regex;
 use std::collections::HashMap;
-use std::{env, fs};
 use std::io::Read;
 use std::path::Path;
-use regex::Regex;
+use std::{env, fs};
 
 pub fn minify_lua(code: String) -> String {
     fn remove_comments(code: &str) -> String {
@@ -126,7 +126,11 @@ fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
         let path = entry.path();
 
         if path.is_file() {
-            files.push(format!("{}{}", prefix, path.file_name().unwrap().to_str().unwrap()));
+            files.push(format!(
+                "{}{}",
+                prefix,
+                path.file_name().unwrap().to_str().unwrap()
+            ));
         } else if path.is_dir() {
             let dir_name = path.file_name().unwrap().to_str().unwrap().to_string();
             traverse_dir(&path, &format!("{}/", dir_name), files);
@@ -135,9 +139,16 @@ fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
 }
 
 pub fn get_lua_files() -> HashMap<String, String> {
-    let exe_name = env::current_exe().unwrap().file_name().unwrap().to_str().unwrap().to_string();
+    let exe_name = env::current_exe()
+        .unwrap()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
 
-    if exe_name == "love" || exe_name == "love.exe" { // files are in raw folder (1 arg)
+    if exe_name == "love" || exe_name == "love.exe" {
+        // files are in raw folder (1 arg)
         let path_arg = env::args().nth(1).unwrap();
         let mut map = HashMap::new();
         // only files in the directory

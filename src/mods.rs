@@ -1,9 +1,9 @@
-use jsonschema::JSONSchema;
-use mlua::{FromLua, IntoLua, Lua};
-use mlua::prelude::{LuaError, LuaResult, LuaValue};
-use serde::{Deserialize, Serialize};
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 use crate::VERSION;
+use jsonschema::JSONSchema;
+use mlua::prelude::{LuaError, LuaResult, LuaValue};
+use mlua::{FromLua, IntoLua, Lua};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct ModInfo {
@@ -57,8 +57,14 @@ pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
     let version = mod_info.version;
     let id = mod_info.id;
     let client = reqwest::blocking::Client::new();
-    let url = format!("https://github.com/{}/{}/releases/download/{}/{}.tar.gz", owner, repo, version, id);
-    let response = client.get(url.clone()).send().expect("Failed to get response");
+    let url = format!(
+        "https://github.com/{}/{}/releases/download/{}/{}.tar.gz",
+        owner, repo, version, id
+    );
+    let response = client
+        .get(url.clone())
+        .send()
+        .expect("Failed to get response");
     let body = response.bytes().expect("Failed to get body");
     let love_dir = get_love_dir(lua).expect("Failed to get love dir");
     let mods_dir = format!("{}/mods", love_dir);
@@ -78,35 +84,32 @@ pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Err
 
 pub fn fetch_mods() -> LuaResult<Vec<ModInfo>> {
     let client = reqwest::blocking::Client::new();
-    match client.get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index").send() {
-        Ok(response) => {
-            match response.text() {
-                Ok(text) => {
-                    let mut mods = Vec::new();
-                    for line in text.lines() {
-                        match get_mods_from_repo(line.to_string()) {
-                            Ok(mod_infos) => {
-                                for mod_info in mod_infos {
-                                    mods.push(mod_info);
-                                }
-                            }
-                            Err(e) => {
-                                return Err(LuaError::RuntimeError(format!("Error: {}", e)));
+    match client
+        .get("https://raw.githubusercontent.com/balamod/balamod/master/new_repos.index")
+        .send()
+    {
+        Ok(response) => match response.text() {
+            Ok(text) => {
+                let mut mods = Vec::new();
+                for line in text.lines() {
+                    match get_mods_from_repo(line.to_string()) {
+                        Ok(mod_infos) => {
+                            for mod_info in mod_infos {
+                                mods.push(mod_info);
                             }
                         }
+                        Err(e) => {
+                            return Err(LuaError::RuntimeError(format!("Error: {}", e)));
+                        }
                     }
+                }
 
-                    println!("Got {} mods:", mods.len());
-                    Ok(mods)
-                }
-                Err(e) => {
-                    Err(LuaError::RuntimeError(format!("Error: {}", e)))
-                }
+                println!("Got {} mods:", mods.len());
+                Ok(mods)
             }
-        }
-        Err(e) => {
-            Err(LuaError::RuntimeError(format!("Error: {}", e)))
-        }
+            Err(e) => Err(LuaError::RuntimeError(format!("Error: {}", e))),
+        },
+        Err(e) => Err(LuaError::RuntimeError(format!("Error: {}", e))),
     }
 }
 
@@ -126,9 +129,15 @@ fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> 
             url: url.to_string(),
             id: id.to_string(),
             name: name.to_string(),
-            description: description.iter().map(|d| d.as_str().unwrap().to_string()).collect(),
+            description: description
+                .iter()
+                .map(|d| d.as_str().unwrap().to_string())
+                .collect(),
             version: version.to_string(),
-            authors: authors.iter().map(|a| a.as_str().unwrap().to_string()).collect(),
+            authors: authors
+                .iter()
+                .map(|a| a.as_str().unwrap().to_string())
+                .collect(),
         });
     }
     Ok(mod_infos)
@@ -150,7 +159,11 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
 
     for mod_dir in mod_dirs {
         let mod_dir: String = mod_dir?.path().display().to_string();
-        lua.load(format!("require('logging').getLogger('balalib'):info('Verifying mod {}')", mod_dir.clone())).exec()?;
+        lua.load(format!(
+            "require('logging').getLogger('balalib'):info('Verifying mod {}')",
+            mod_dir.clone()
+        ))
+        .exec()?;
         let manifest_file = format!("{}/manifest.json", mod_dir.clone());
         if !std::path::Path::new(&manifest_file).exists() {
             continue;
@@ -176,32 +189,30 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         let mut manifest: LocalMod = serde_json::from_str(&manifest).unwrap();
 
         match manifest.clone().balalib_version {
-            Some(balalib_version) => {
-                match balalib_version.chars().next().unwrap() {
-                    '>' => {
-                        let balalib_version = balalib_version.split(">").nth(1).unwrap();
-                        if balalib_version <= VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
+            Some(balalib_version) => match balalib_version.chars().next().unwrap() {
+                '>' => {
+                    let balalib_version = balalib_version.split(">").nth(1).unwrap();
+                    if balalib_version <= VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
                     }
-                    '<' => {
-                        let balalib_version = balalib_version.split("<").nth(1).unwrap();
-                        if balalib_version >= VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
-                    }
-                    '=' => {
-                        let balalib_version = balalib_version.split("=").nth(1).unwrap();
-                        if balalib_version != VERSION {
-                            lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
-                            continue;
-                        }
-                    }
-                    _ => {}
                 }
-            }
+                '<' => {
+                    let balalib_version = balalib_version.split("<").nth(1).unwrap();
+                    if balalib_version >= VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
+                    }
+                }
+                '=' => {
+                    let balalib_version = balalib_version.split("=").nth(1).unwrap();
+                    if balalib_version != VERSION {
+                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        continue;
+                    }
+                }
+                _ => {}
+            },
             None => {}
         }
 
@@ -265,10 +276,22 @@ impl IntoLua<'_> for LocalMod {
         let update_mod = local_mod.clone();
         let save_config = local_mod.clone();
         let load_config = local_mod.clone();
-        table.set("update", lua.create_function(move |lua, mods: Vec<ModInfo>| update_mod.update(lua, mods))?)?;
-        table.set("delete", lua.create_function(move |lua, ()| delete_mod.delete(lua))?)?;
-        table.set("save_config", lua.create_function(move |lua, table: LuaValue| save_config.save_config(lua, table))?)?;
-        table.set("load_config", lua.create_function(move |lua, ()| load_config.load_config(lua))?)?;
+        table.set(
+            "update",
+            lua.create_function(move |lua, mods: Vec<ModInfo>| update_mod.update(lua, mods))?,
+        )?;
+        table.set(
+            "delete",
+            lua.create_function(move |lua, ()| delete_mod.delete(lua))?,
+        )?;
+        table.set(
+            "save_config",
+            lua.create_function(move |lua, table: LuaValue| save_config.save_config(lua, table))?,
+        )?;
+        table.set(
+            "load_config",
+            lua.create_function(move |lua, ()| load_config.load_config(lua))?,
+        )?;
         table.set("id", local_mod.id)?;
         table.set("name", local_mod.name)?;
         table.set("enabled", local_mod.enabled)?;
@@ -277,7 +300,6 @@ impl IntoLua<'_> for LocalMod {
         table.set("author", local_mod.author)?;
         table.set("load_before", local_mod.load_before)?;
         table.set("load_after", local_mod.load_after)?;
-
 
         Ok(LuaValue::Table(table))
     }
@@ -302,7 +324,10 @@ impl LocalMod {
             }
             None => {
                 println!("Mod not found in the repo: {}", self.id);
-                Err(LuaError::RuntimeError(format!("Mod not found in the repo: {}", self.id)))
+                Err(LuaError::RuntimeError(format!(
+                    "Mod not found in the repo: {}",
+                    self.id
+                )))
             }
         }
     }
