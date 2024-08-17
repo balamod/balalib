@@ -69,11 +69,13 @@ jobs:
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4.1.7
+
       - name: ⚙️ Install Rust
         uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: stable
           override: true
+
       - name: ⚙️ Init GitHub check
         uses: LouisBrunner/checks-action@v2.0.0
         id: init
@@ -81,6 +83,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Check formatting
           status: in_progress
+
       - name: ✅ Check formatting
         run: cargo fmt --check --message-format human --all
 
@@ -111,22 +114,22 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: ⚙️ Install grcov
+        run: cargo install grcov
+
       - name: ⚙️ Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
-
 
       - name: ✅ Run tests with coverage
         run: |
           mkdir -p target/coverage
           CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
-
-      - name: ⚙️ Install grcov
-        uses: actions-rs/grcov@v0.1.5
+          grcov . --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/tests.lcov
 
       - name: 📝 Comment Code Coverage Report
         uses: romeovs/lcov-reporter-action@v0.4.0
         with:
-          lcov-file: lcov.info
+          lcov-file: target/coverage/tests.lcov
 
       - name: ⚙️ Update GitHub check
         uses: LouisBrunner/checks-action@v2.0.0
