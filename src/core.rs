@@ -1,35 +1,41 @@
-use std::process::Command;
 use crate::mods::ModInfo;
 use crate::utils::{extract_functions, get_lua_files, minify_lua};
 use mlua::prelude::LuaResult;
 use mlua::{Lua, Table, Value};
 use serde_json::Value as JsonValue;
-use std::path::Path;
 use std::env;
+use std::path::Path;
+use std::process::Command;
 
 pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
     let current_version = lua.load("require('balamod_version')").eval::<String>()?;
-    let client = reqwest::blocking::Client::builder().user_agent("balamod_lua").build().unwrap();
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("balamod_lua")
+        .build()
+        .unwrap();
 
-
-    match client.get("https://api.github.com/repos/balamod/balamod_lua/releases").send() {
-        Ok(response) => {
-            match response.text() {
-                Ok(text) => {
-                    let releases: Vec<serde_json::Value> = serde_json::from_str(&text).unwrap_or_else(|_| panic!("Failed to parse json: {}", text));
-                    let latest_version = releases.iter().find(|release| {
-                        !release["prerelease"].as_bool().unwrap() && !release["draft"].as_bool().unwrap()
-                    }).unwrap()["tag_name"].as_str().unwrap();
-                    Ok(current_version != latest_version)
-                }
-                Err(_) => {
-                    Ok(false)
-                }
+    match client
+        .get("https://api.github.com/repos/balamod/balamod_lua/releases")
+        .send()
+    {
+        Ok(response) => match response.text() {
+            Ok(text) => {
+                let releases: Vec<serde_json::Value> = serde_json::from_str(&text)
+                    .unwrap_or_else(|_| panic!("Failed to parse json: {}", text));
+                let latest_version = releases
+                    .iter()
+                    .find(|release| {
+                        !release["prerelease"].as_bool().unwrap()
+                            && !release["draft"].as_bool().unwrap()
+                    })
+                    .unwrap()["tag_name"]
+                    .as_str()
+                    .unwrap();
+                Ok(current_version != latest_version)
             }
-        }
-        Err(_) => {
-            Ok(false)
-        }
+            Err(_) => Ok(false),
+        },
+        Err(_) => Ok(false),
     }
 }
 
@@ -48,15 +54,16 @@ fn lua_value_to_json_value(value: &Value) -> JsonValue {
 fn table_to_json_value(table: &Table) -> JsonValue {
     let mut map = serde_json::Map::new();
     let table_clone = table.clone();
-    for pair in table_clone.pairs::<Value, Value>() {
-        if let Ok((key, value)) = pair {
-            if let Value::String(k) = key {
-                map.insert(k.to_str().unwrap().to_string(), lua_value_to_json_value(&value));
-            } else if let Value::Integer(k) = key {
-                map.insert(k.to_string(), lua_value_to_json_value(&value));
-            } else if let Value::Number(k) = key {
-                map.insert(k.to_string(), lua_value_to_json_value(&value));
-            }
+    for (key, value) in table_clone.pairs::<Value, Value>().flatten() {
+        if let Value::String(k) = key {
+            map.insert(
+                k.to_str().unwrap().to_string(),
+                lua_value_to_json_value(&value),
+            );
+        } else if let Value::Integer(k) = key {
+            map.insert(k.to_string(), lua_value_to_json_value(&value));
+        } else if let Value::Number(k) = key {
+            map.insert(k.to_string(), lua_value_to_json_value(&value));
         }
     }
     JsonValue::Object(map)
@@ -72,9 +79,8 @@ pub fn lua_to_json(table: Value) -> LuaResult<String> {
 }
 
 pub fn json_to_lua(lua: &Lua, json: String) -> LuaResult<Value> {
-    let value: serde_json::Value = serde_json::from_str(&json).map_err(|e| {
-        mlua::Error::RuntimeError(format!("Error parsing JSON: {}", e))
-    })?;
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|e| mlua::Error::RuntimeError(format!("Error parsing JSON: {}", e)))?;
 
     json_value_to_lua_value(lua, value)
 }
@@ -113,7 +119,8 @@ fn json_value_to_lua_value(lua: &Lua, value: serde_json::Value) -> LuaResult<Val
 }
 
 pub fn get_love_dir(lua: &Lua) -> LuaResult<String> {
-    lua.load("love.filesystem.getSaveDirectory()").eval::<String>()
+    lua.load("love.filesystem.getSaveDirectory()")
+        .eval::<String>()
 }
 
 pub fn is_mod_present(lua: &Lua, mod_info: ModInfo) -> LuaResult<bool> {
@@ -135,8 +142,14 @@ pub fn is_mod_present(lua: &Lua, mod_info: ModInfo) -> LuaResult<bool> {
 
 #[cfg(target_os = "windows")]
 pub fn self_update(cli_ver: &str) -> LuaResult<()> {
-    let url = format!("https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe", cli_ver, cli_ver);
-    let client = reqwest::blocking::Client::builder().user_agent("balalib").build().unwrap();
+    let url = format!(
+        "https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe",
+        cli_ver, cli_ver
+    );
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("balalib")
+        .build()
+        .unwrap();
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.exe").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
@@ -152,9 +165,7 @@ pub fn self_update(_cli_ver: &str) -> LuaResult<()> {
 pub fn restart() -> LuaResult<()> {
     let exe_path = env::current_exe()?;
     let args: Vec<String> = env::args().collect();
-    Command::new(exe_path)
-        .args(&args)
-        .spawn()?;
+    Command::new(exe_path).args(&args).spawn()?;
     Ok(())
 }
 
@@ -163,16 +174,17 @@ pub fn restart() -> LuaResult<()> {
     use std::ffi::OsString;
     use std::os::unix::prelude::CommandExt;
     let args: Vec<OsString> = env::args_os().skip(1).collect();
-    Command::new("/proc/self/exe")
-        .args(&args)
-        .exec();
+    Command::new("/proc/self/exe").args(&args).exec();
     Ok(())
 }
 
 pub fn setup_injection(lua: &Lua) -> LuaResult<()> {
     let files = get_lua_files();
 
-    if lua.load("if game_state then return true else return false end").eval::<bool>()? {
+    if lua
+        .load("if game_state then return true else return false end")
+        .eval::<bool>()?
+    {
         println!("Already injected");
         return Ok(());
     }
@@ -197,21 +209,32 @@ pub fn setup_injection(lua: &Lua) -> LuaResult<()> {
     Ok(())
 }
 
-pub fn inject(lua: &Lua, file: String, function: String, code_to_find: String, code_to_insert: String) -> LuaResult<()> {
+pub fn inject(
+    lua: &Lua,
+    file: String,
+    function: String,
+    code_to_find: String,
+    code_to_insert: String,
+) -> LuaResult<()> {
     let code_to_insert = minify_lua(code_to_insert);
     let code_to_find = minify_lua(code_to_find);
 
-    let function_code = lua.load(format!("return game_state['{}']['{}']", file, function).as_str()).eval::<String>()?;
+    let function_code = lua
+        .load(format!("return game_state['{}']['{}']", file, function).as_str())
+        .eval::<String>()?;
 
     if function_code.contains(&code_to_find) {
         let new_code = function_code.replace(&code_to_find, &code_to_insert);
-        let file_table = lua.load(format!("return game_state['{}']", file).as_str()).eval::<Table>()?;
+        let file_table = lua
+            .load(format!("return game_state['{}']", file).as_str())
+            .eval::<Table>()?;
         file_table.set(function.clone(), new_code.clone())?;
 
         // overwrite the old function in a pcall
-        lua.load(format!("pcall(function() {} end)", new_code).as_str()).exec()?;
+        lua.load(format!("pcall(function() {} end)", new_code).as_str())
+            .exec()?;
 
-        return Ok(())
+        return Ok(());
     }
 
     Err(mlua::Error::RuntimeError("Code not found".to_string()))
