@@ -159,11 +159,6 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
 
     for mod_dir in mod_dirs {
         let mod_dir: String = mod_dir?.path().display().to_string();
-        lua.load(format!(
-            "require('logging').getLogger('balalib'):info('Verifying mod {}')",
-            mod_dir.clone()
-        ))
-        .exec()?;
         let manifest_file = format!("{}/manifest.json", mod_dir.clone());
         if !std::path::Path::new(&manifest_file).exists() {
             continue;
@@ -178,9 +173,7 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         if let Err(errors) = validation {
             for error in errors {
                 println!("Validation error: {}", error);
-                //lua.load(format!("require('logging').getLogger('balalib'):error('Validation error: {}')", error)).exec()?;
                 println!("Instance path: {}", error.instance_path);
-                //lua.load(format!("require('logging').getLogger('balalib'):error('Instance path: {}')", error.instance_path)).exec()?;
             }
             //return Err(LuaError::RuntimeError(format!("Invalid manifest.json for mod: {}", mod_dir)));
             continue;
@@ -193,21 +186,21 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
                 '>' => {
                     let balalib_version = balalib_version.split(">").nth(1).unwrap();
                     if balalib_version <= VERSION {
-                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        println!("Balalib version too low: {} for mod {}", balalib_version, manifest.id);
                         continue;
                     }
                 }
                 '<' => {
                     let balalib_version = balalib_version.split("<").nth(1).unwrap();
                     if balalib_version >= VERSION {
-                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        println!("Balalib version too high: {} for mod {}", balalib_version, manifest.id);
                         continue;
                     }
                 }
                 '=' => {
                     let balalib_version = balalib_version.split("=").nth(1).unwrap();
                     if balalib_version != VERSION {
-                        lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version does not match: {} for mod {}')", balalib_version, manifest.id)).exec()?;
+                        println!("Balalib version does not match: {} for mod {}", balalib_version, manifest.id);
                         continue;
                     }
                 }
@@ -219,7 +212,7 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         match manifest.clone().min_balamod_version {
             Some(min_balamod_version) => {
                 if balamod_version < min_balamod_version {
-                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too low: {} for mod {}')", min_balamod_version, manifest.id)).exec()?;
+                    println!("Balalib version too low: {} for mod {}", min_balamod_version, manifest.id);
                     continue;
                 }
             }
@@ -229,7 +222,7 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         match manifest.clone().max_balamod_version {
             Some(max_balamod_version) => {
                 if balamod_version > max_balamod_version {
-                    lua.load(format!("require('logging').getLogger('balalib'):error('Balalib version too high: {} for mod {}')", max_balamod_version, manifest.id)).exec()?;
+                    println!("Balalib version too high: {} for mod {}", max_balamod_version, manifest.id);
                     continue;
                 }
             }
@@ -240,7 +233,7 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         let folder_name = folder_name.split("\\").last().unwrap();
 
         if manifest.id != folder_name {
-            lua.load(format!("require('logging').getLogger('balalib'):error('Mod id in manifest.json does not match folder name: {} != {}')", manifest.id, folder_name)).exec()?;
+            println!("Mod id in manifest.json does not match folder name: {} != {}", manifest.id, folder_name);
             continue;
         }
 
