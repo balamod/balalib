@@ -1,5 +1,5 @@
-use crate::core::restart;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
+use crate::core::restart;
 use mlua::prelude::LuaResult;
 
 pub fn need_update(current_version: String) -> LuaResult<bool> {
@@ -49,7 +49,7 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     let mut response = client.get(&url).send().unwrap();
     let mut file = std::fs::File::create("balamod.tmp").unwrap();
     std::io::copy(&mut response, &mut file).unwrap();
-    std::fs::rename("balamod.tmp", "balamod.exe")?;
+    std::fs::rename("balamod.tmp", "balamod.exe").unwrap();
     drop(file);
 
     let script = include_bytes!("scripts/update.cmd");
