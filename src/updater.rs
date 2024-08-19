@@ -34,6 +34,8 @@ pub fn need_update(current_version: String) -> LuaResult<bool> {
 
 #[cfg(target_os = "windows")]
 pub fn self_update(cli_ver: &str) -> LuaResult<()> {
+    use std::io::Write;
+
     let url = format!(
         "https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe",
         cli_ver, cli_ver
