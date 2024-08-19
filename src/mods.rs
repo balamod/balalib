@@ -1,8 +1,10 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 use crate::utils::validate_schema;
 use crate::VERSION;
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
-use mlua::{FromLua, IntoLua, Lua};
+use mlua::{FromLua, IntoLua, Lua, Table};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -342,4 +344,71 @@ impl LocalMod {
         let json = std::fs::read_to_string(config_file)?;
         json_to_lua(lua, json)
     }
+}
+
+#[derive(PartialEq)]
+enum VisitFlag {
+    Temporary,
+    Permanent,
+}
+
+pub fn sort_mods(mods: Vec<Table>) -> LuaResult<Vec<Table>> {
+    // Initialize graph as a Map<String, Set<String>>
+    // where the key is the mod id and the value is a set of mod ids to load before said mod
+    let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
+    for mod_table in mods.iter() {
+        let id = mod_table.get::<_, String>("id").unwrap();
+        graph.insert(id.clone(), HashSet::new());
+    }
+    for mod_table in mods.iter() {
+        let id = mod_table.get::<_, String>("id").unwrap();
+        let load_before = mod_table.get::<_, Vec<String>>("load_before").unwrap();
+        for before in load_before {
+            graph.get_mut(&id).unwrap().insert(before.clone());
+        }
+        let load_after = mod_table.get::<_, Vec<String>>("load_after").unwrap();
+        for after in load_after {
+            graph.get_mut(&after).unwrap().insert(id.clone());
+        }
+    }
+    let mut sorted_mod_ids: Vec<String> = Vec::new();
+    let mut visited: HashMap<String, VisitFlag> = HashMap::new();
+    fn visit(
+        id: String,
+        graph: &HashMap<String, HashSet<String>>,
+        visited: &mut HashMap<String, VisitFlag>,
+        sorted_mod_ids: &mut Vec<String>,
+    ) -> bool {
+        if visited.get(&id).is_some_and(|flag| *flag == VisitFlag::Permanent) {
+            return true;
+        }
+        if visited.get(&id).is_some_and(|flag| *flag == VisitFlag::Temporary) {
+            return false;
+        }
+        visited.insert(id.clone(), VisitFlag::Temporary);
+        for before in graph.get(&id).unwrap() {
+            if !visit(before.clone(), graph, visited, sorted_mod_ids) {
+                return false;
+            }
+        }
+        sorted_mod_ids.push(id.clone());
+        visited.insert(id.clone(), VisitFlag::Permanent);
+        return true;
+    }
+    for id in graph.keys() {
+        if !visited.contains_key(id) {
+            visit(id.clone(), &graph, &mut visited, &mut sorted_mod_ids);
+        }
+    }
+
+    let mut sorted_mods: Vec<Table> = Vec::new();
+    let mod_count = mods.len();
+    for (i, id) in sorted_mod_ids.iter().enumerate() {
+        let mod_table = mods.iter().find(
+            |mod_table| mod_table.get::<_, String>("id").unwrap() == id.to_owned(),
+        ).unwrap();
+        mod_table.set("order", mod_count - i).unwrap();
+        sorted_mods.push(mod_table.clone());
+    }
+    return Ok(sorted_mods);
 }

@@ -32,4 +32,13 @@ mod tests {
     fn test_get_last_cli_version() {
         println!("Latest CLI version: {}", get_latest_cli_version());
     }
+
+
+    // TODO: Add test for sorted_mods
+    // {"id": "test", "load_before": ["foo"], "load_after": ["baz", "qux"]}
+    // {"id": "foo", "load_before": [], "load_after": ["baz", "qux"]}
+    // {"id": "bar", "load_before": ["baz"], "load_after": []}
+    // {"id": "baz", "load_before": ["qux"], "load_after": []}
+    // {"id": "qux", "load_before": [], "load_after": []}
+    // Expected order: bar, baz, qux, test, foo
 }

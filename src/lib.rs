@@ -1,6 +1,7 @@
 use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection, validate_schema};
 use mlua::prelude::*;
 use mlua::Value;
+use mlua::Table;
 
 use crate::mods::*;
 use crate::updater::{get_latest_cli_version, self_update};
@@ -61,6 +62,7 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     )?;
     exports.set("inject", lua.create_function(|lua, (file, function, code_to_find, code_to_insert): (String, String, String, String)| inject(lua, file, function, code_to_find, code_to_insert))?)?;
     exports.set("version", VERSION)?;
+    exports.set("sort_mods", lua.create_function(|_, mods: Vec<Table>| sort_mods(mods))?)?;
     lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str())
         .exec()?;
     Ok(exports)
