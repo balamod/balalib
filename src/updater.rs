@@ -33,7 +33,7 @@ pub fn need_update(current_version: String) -> LuaResult<bool> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
+pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     let url = format!(
         "https://github.com/balamod/balamod/releases/download/{}/balamod-{}-windows.exe",
         cli_ver, cli_ver
@@ -49,18 +49,24 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
     std::fs::rename("balamod.tmp", "balamod.exe")?;
     drop(file);
 
-    let output = std::process::Command::new("balamod.exe")
-        .arg("-u")
-        .arg("-a")
-        .output()?;
+    let script = include_bytes!("scripts/update.cmd");
 
-    println!("{:?}", output);
+    let mut file = std::fs::File::create("update.cmd").unwrap();
+    file.write_all(script).unwrap();
+    drop(file);
 
-    restart()
+    // opens it in a new cmd window
+    std::process::Command::new("cmd")
+        .arg("/C")
+        .arg("start")
+        .arg("update.cmd")
+        .spawn()?;
+
+    std::process::exit(0);
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
+pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     use std::os::unix::fs::PermissionsExt;
 
     let mut filename = format!("balamod-{}-", cli_ver);
@@ -113,4 +119,35 @@ pub fn self_update_balamod(cli_ver: &str) -> LuaResult<()> {
     }
 
     restart()
+}
+
+pub fn get_latest_cli_version() -> String {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("balalib")
+        .build()
+        .unwrap();
+
+    match client
+        .get("https://api.github.com/repos/balamod/balamod/releases")
+        .send()
+    {
+        Ok(response) => match response.text() {
+            Ok(text) => {
+                let releases: Vec<serde_json::Value> = serde_json::from_str(&text)
+                    .expect(format!("Failed to parse json: {}", text).as_str());
+                let latest_version = releases
+                    .iter()
+                    .find(|release| {
+                        !release["prerelease"].as_bool().unwrap()
+                            && !release["draft"].as_bool().unwrap()
+                    })
+                    .unwrap()["tag_name"]
+                    .as_str()
+                    .unwrap();
+                latest_version.to_string()
+            }
+            Err(_) => "0.0.0".to_string(),
+        },
+        Err(_) => "0.0.0".to_string(),
+    }
 }

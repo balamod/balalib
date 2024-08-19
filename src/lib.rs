@@ -5,7 +5,7 @@ use mlua::prelude::*;
 use mlua::Value;
 
 use crate::mods::*;
-use crate::updater::self_update_balamod;
+use crate::updater::{get_latest_cli_version, self_update};
 
 mod core;
 mod mods;
@@ -49,8 +49,8 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
         lua.create_function(|lua, mod_info: ModInfo| is_mod_present(lua, mod_info))?,
     )?;
     exports.set(
-        "self_update_balamod",
-        lua.create_function(|_, ()| self_update_balamod("v0.1.11"))?,
+        "self_update",
+        lua.create_function(|_, ()| self_update(get_latest_cli_version().as_str()))?,
     )?;
     exports.set("restart", lua.create_function(|_, ()| restart())?)?;
     exports.set(

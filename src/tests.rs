@@ -2,6 +2,7 @@
 mod tests {
     use crate::utils::minify_lua;
     use std::fs;
+    use crate::updater::get_latest_cli_version;
 
     #[test]
     fn test_update() {
@@ -25,5 +26,10 @@ mod tests {
             minify_lua(lua_file),
             r#"function test() print("Hello World!") a = function() print("Hello World!") end a() end test()"#
         );
+    }
+
+    #[test]
+    fn test_get_last_cli_version() {
+        println!("Latest CLI version: {}", get_latest_cli_version());
     }
 }
