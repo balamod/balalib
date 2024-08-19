@@ -1,8 +1,9 @@
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use crate::core::restart;
 use mlua::prelude::LuaResult;
+use crate::VERSION;
 
-pub fn need_update(current_version: String) -> LuaResult<bool> {
+pub fn need_update(balamod_version: String) -> LuaResult<bool> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("balamod_lua")
         .build()
@@ -25,7 +26,33 @@ pub fn need_update(current_version: String) -> LuaResult<bool> {
                     .unwrap()["tag_name"]
                     .as_str()
                     .unwrap();
-                Ok(current_version != latest_version)
+                if balamod_version != latest_version {
+                    return Ok(true);
+                }
+            }
+            Err(_) => return Ok(false),
+        },
+        Err(_) => return Ok(false),
+    }
+
+    match client
+        .get("https://api.github.com/repos/balamod/balalib/releases")
+        .send()
+    {
+        Ok(response) => match response.text() {
+            Ok(text) => {
+                let releases: Vec<serde_json::Value> = serde_json::from_str(&text)
+                    .expect(format!("Failed to parse json: {}", text).as_str());
+                let latest_version = releases
+                    .iter()
+                    .find(|release| {
+                        !release["prerelease"].as_bool().unwrap()
+                            && !release["draft"].as_bool().unwrap()
+                    })
+                    .unwrap()["tag_name"]
+                    .as_str()
+                    .unwrap();
+                Ok(VERSION != latest_version)
             }
             Err(_) => Ok(false),
         },
