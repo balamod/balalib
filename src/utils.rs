@@ -185,10 +185,19 @@ pub fn get_lua_files() -> HashMap<String, String> {
 }
 
 pub fn validate_schema(schema: String, data: String) -> String {
-    let schema: serde_json::Value = serde_json::from_str(&schema).unwrap();
-    let data: serde_json::Value = serde_json::from_str(&data).unwrap();
+    let schema: serde_json::Value = match serde_json::from_str(&schema) {
+        Ok(schema) => schema,
+        Err(e) => return format!("Error parsing schema: {}", e),
+    };
+    let data: serde_json::Value = match serde_json::from_str(&data) {
+        Ok(data) => data,
+        Err(e) => return format!("Error parsing data: {}", e),
+    };
 
-    let binding = jsonschema::JSONSchema::compile(&schema).unwrap();
+    let binding = match jsonschema::JSONSchema::compile(&schema) {
+        Ok(binding) => binding,
+        Err(e) => return format!("Error compiling schema: {}", e),
+    };
     let result = binding.validate(&data);
 
     if result.is_ok() {
