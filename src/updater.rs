@@ -1,4 +1,5 @@
 use crate::core::restart;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use mlua::prelude::LuaResult;
 
 pub fn need_update(current_version: String) -> LuaResult<bool> {
