@@ -183,3 +183,21 @@ pub fn get_lua_files() -> HashMap<String, String> {
         map
     }
 }
+
+pub fn validate_schema(schema: String, data: String) -> String {
+    let schema: serde_json::Value = serde_json::from_str(&schema).unwrap();
+    let data: serde_json::Value = serde_json::from_str(&data).unwrap();
+
+    let binding = jsonschema::JSONSchema::compile(&schema).unwrap();
+    let result = binding.validate(&data);
+
+    if result.is_ok() {
+        "valid".to_string()
+    } else {
+        let mut errors = Vec::new();
+        for error in result.err().unwrap() {
+            errors.push(format!("{}", error));
+        }
+        errors.join("\n")
+    }
+}

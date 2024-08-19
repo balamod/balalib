@@ -1,6 +1,4 @@
-use crate::core::{
-    inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection,
-};
+use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection, validate_schema};
 use mlua::prelude::*;
 use mlua::Value;
 
@@ -56,6 +54,10 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set(
         "setup_injection",
         lua.create_function(|lua, ()| setup_injection(lua))?,
+    )?;
+    exports.set(
+        "validate_schema",
+        lua.create_function(|_, (schema, data): (String, String)| validate_schema(schema, data))?,
     )?;
     exports.set("inject", lua.create_function(|lua, (file, function, code_to_find, code_to_insert): (String, String, String, String)| inject(lua, file, function, code_to_find, code_to_insert))?)?;
     exports.set("version", VERSION)?;

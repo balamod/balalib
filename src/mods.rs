@@ -1,6 +1,6 @@
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
+use crate::utils::validate_schema;
 use crate::VERSION;
-use jsonschema::JSONSchema;
 use mlua::prelude::{LuaError, LuaResult, LuaValue};
 use mlua::{FromLua, IntoLua, Lua};
 use serde::{Deserialize, Serialize};
@@ -145,8 +145,7 @@ fn get_mods_from_repo(repo_url: String) -> Result<Vec<ModInfo>, reqwest::Error> 
 
 pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
     let schema = include_bytes!("schema/manifest.schema.json");
-    let schema: serde_json::Value = serde_json::from_slice(schema).expect("Invalid schema");
-    let compiled_schema = JSONSchema::compile(&schema).expect("Invalid schema");
+    let schema = String::from_utf8(schema.to_vec()).unwrap();
 
     let love_dir = get_love_dir(lua)?;
     let mods_dir = format!("{}/mods", love_dir);
@@ -168,14 +167,9 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         }
 
         let manifest = std::fs::read_to_string(manifest_file)?;
-        let manifest_json: serde_json::Value = serde_json::from_str(&manifest).unwrap();
-        let validation = compiled_schema.validate(&manifest_json);
-        if let Err(errors) = validation {
-            for error in errors {
-                println!("Validation error: {}", error);
-                println!("Instance path: {}", error.instance_path);
-            }
-            //return Err(LuaError::RuntimeError(format!("Invalid manifest.json for mod: {}", mod_dir)));
+        let validation = validate_schema(schema.clone(), manifest.clone());
+        if validation != "valid" {
+            println!("Validation error: {}", validation);
             continue;
         }
 

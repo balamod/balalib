@@ -193,3 +193,7 @@ pub fn inject(
 
     Err(mlua::Error::RuntimeError("Code not found".to_string()))
 }
+
+pub fn validate_schema(schema: String, data: String) -> LuaResult<String> {
+    Ok(super::utils::validate_schema(schema, data))
+}
