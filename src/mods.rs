@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 use crate::utils::validate_schema;
 use crate::VERSION;
-use mlua::prelude::{LuaError, LuaResult, LuaValue};
-use mlua::{FromLua, IntoLua, Lua, Table};
+use mlua::prelude::{LuaError, LuaResult, LuaTable, LuaValue};
+use mlua::{FromLua, IntoLua, Lua, Table, Value};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -352,7 +352,14 @@ enum VisitFlag {
     Permanent,
 }
 
-pub fn sort_mods(mods: Vec<Table>) -> LuaResult<Vec<Table>> {
+pub fn sort_mods<'a>(lua: &'a Lua, mods_table: LuaTable<'a>) -> LuaResult<LuaTable<'a>> {
+
+    let mut mods: Vec<LuaTable> = vec![];
+    for pair in mods_table.clone().pairs::<String, Table>() {
+        let (_, value) = pair?;
+        mods.push(value);
+    }
+
     // Initialize graph as a Map<String, Set<String>>
     // where the key is the mod id and the value is a set of mod ids to load before said mod
     let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
@@ -393,7 +400,7 @@ pub fn sort_mods(mods: Vec<Table>) -> LuaResult<Vec<Table>> {
         }
         sorted_mod_ids.push(id.clone());
         visited.insert(id.clone(), VisitFlag::Permanent);
-        return true;
+        true
     }
     for id in graph.keys() {
         if !visited.contains_key(id) {
@@ -401,7 +408,7 @@ pub fn sort_mods(mods: Vec<Table>) -> LuaResult<Vec<Table>> {
         }
     }
 
-    let mut sorted_mods: Vec<Table> = Vec::new();
+    let mut sorted_mods: Vec<LuaTable> = Vec::new();
     let mod_count = mods.len();
     for (i, id) in sorted_mod_ids.iter().enumerate() {
         let mod_table = mods.iter().find(
@@ -410,5 +417,11 @@ pub fn sort_mods(mods: Vec<Table>) -> LuaResult<Vec<Table>> {
         mod_table.set("order", mod_count - i).unwrap();
         sorted_mods.push(mod_table.clone());
     }
-    return Ok(sorted_mods);
+
+    let sorted_mods_table = lua.create_table()?;
+    for mod_table in sorted_mods {
+        sorted_mods_table.set(mod_table.get::<_, String>("id").unwrap(), mod_table)?;
+    }
+
+    Ok(sorted_mods_table)
 }

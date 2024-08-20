@@ -62,7 +62,7 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
     )?;
     exports.set("inject", lua.create_function(|lua, (file, function, code_to_find, code_to_insert): (String, String, String, String)| inject(lua, file, function, code_to_find, code_to_insert))?)?;
     exports.set("version", VERSION)?;
-    exports.set("sort_mods", lua.create_function(|_, mods: Vec<Table>| sort_mods(mods))?)?;
+    exports.set("sort_mods", lua.create_function(|lua, mods: LuaTable| sort_mods(lua, mods))?)?;
     lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str())
         .exec()?;
     Ok(exports)
