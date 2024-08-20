@@ -4,7 +4,7 @@ use crate::core::{get_love_dir, json_to_lua, lua_to_json};
 use crate::utils::validate_schema;
 use crate::VERSION;
 use mlua::prelude::{LuaError, LuaResult, LuaTable, LuaValue};
-use mlua::{FromLua, IntoLua, Lua, Table, Value};
+use mlua::{FromLua, IntoLua, Lua, Table};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]

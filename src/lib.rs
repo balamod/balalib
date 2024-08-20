@@ -1,7 +1,6 @@
 use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection, validate_schema};
 use mlua::prelude::*;
 use mlua::Value;
-use mlua::Table;
 
 use crate::mods::*;
 use crate::updater::{get_latest_cli_version, self_update};
