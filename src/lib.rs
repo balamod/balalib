@@ -1,8 +1,11 @@
-use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, restart, setup_injection, validate_schema};
+use crate::core::{inject, is_mod_present, json_to_lua, lua_to_json, need_update, setup_injection, validate_schema};
+#[cfg(not(target_os = "android"))]
+use crate::core::restart;
 use mlua::prelude::*;
 use mlua::Value;
 
 use crate::mods::*;
+#[cfg(not(target_os = "android"))]
 use crate::updater::{get_latest_cli_version, self_update};
 
 mod core;
@@ -46,10 +49,12 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
         "is_mod_present",
         lua.create_function(|lua, mod_info: ModInfo| is_mod_present(lua, mod_info))?,
     )?;
+    #[cfg(not(target_os = "android"))]
     exports.set(
         "self_update",
         lua.create_function(|_, ()| self_update(get_latest_cli_version().as_str()))?,
     )?;
+    #[cfg(not(target_os = "android"))]
     exports.set("restart", lua.create_function(|_, ()| restart())?)?;
     exports.set(
         "setup_injection",

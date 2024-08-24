@@ -151,6 +151,7 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
     restart()
 }
 
+#[cfg(not(target_os = "android"))]
 pub fn get_latest_cli_version() -> String {
     let client = reqwest::blocking::Client::builder()
         .user_agent("balalib")

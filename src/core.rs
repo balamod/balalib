@@ -3,8 +3,10 @@ use crate::utils::{extract_functions, get_lua_files, minify_lua};
 use mlua::prelude::LuaResult;
 use mlua::{Lua, Table, Value};
 use serde_json::Value as JsonValue;
+#[cfg(not(target_os = "android"))]
 use std::env;
 use std::path::Path;
+#[cfg(not(target_os = "android"))]
 use std::process::Command;
 
 pub fn need_update(lua: &Lua, _: ()) -> LuaResult<bool> {
