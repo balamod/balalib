@@ -138,6 +138,7 @@ fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
     }
 }
 
+#[cfg(feature = "debug")]
 pub fn get_lua_files() -> HashMap<String, String> {
     let exe_name = env::current_exe()
         .unwrap()
@@ -146,42 +147,56 @@ pub fn get_lua_files() -> HashMap<String, String> {
         .to_str()
         .unwrap()
         .to_string();
+    // files are in raw folder (1 arg)
+    let path_arg = env::args().nth(1).unwrap();
+    let mut map = HashMap::new();
+    // only files in the directory
+    let mut entries = vec![];
+    traverse_dir(Path::new(&path_arg), "", &mut entries);
 
-    if exe_name == "love" || exe_name == "love.exe" {
-        // files are in raw folder (1 arg)
-        let path_arg = env::args().nth(1).unwrap();
-        let mut map = HashMap::new();
-        // only files in the directory
-        let mut entries = vec![];
-        traverse_dir(Path::new(&path_arg), "", &mut entries);
-
-        for entry in entries {
-            if entry.ends_with(".lua") {
-                let mut file = fs::File::open(format!("{}/{}", path_arg, entry)).unwrap();
-                let mut content = String::new();
-                file.read_to_string(&mut content).unwrap();
-                map.insert(entry.replace(".lua", ""), content);
-            }
-        }
-
-        map
-    } else {
-        let exe_path = env::current_exe().unwrap();
-        let file = fs::File::open(exe_path).unwrap();
-        let mut archive = zip::ZipArchive::new(file).unwrap();
-        let mut map = HashMap::new();
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let name = file.name().to_string();
-            if !name.ends_with(".lua") {
-                continue;
-            }
+    for entry in entries {
+        if entry.ends_with(".lua") {
+            let mut file = fs::File::open(format!("{}/{}", path_arg, entry)).unwrap();
             let mut content = String::new();
             file.read_to_string(&mut content).unwrap();
-            map.insert(name, content);
+            map.insert(entry.replace(".lua", ""), content);
         }
-        map
     }
+
+    map
+}
+
+#[cfg(not(feature = "debug"))]
+pub fn get_lua_files() -> HashMap<String, String> {
+    let exe_path = env::current_exe().unwrap();
+    let mut map = HashMap::new();
+    match fs::File::open(exe_path) {
+        Ok(file) => {
+            match zip::ZipArchive::new(file) {
+                Ok(mut archive) => {
+                    for i in 0..archive.len() {
+                        match archive.by_index(i) {
+                            Ok(mut file) => {
+                                let name = file.name().to_string();
+                                if !name.ends_with(".lua") {
+                                    continue;
+                                }
+                                let mut content = String::new();
+                                match file.read_to_string(&mut content) {
+                                    Ok(_) => map.insert(name, content),
+                                    Err(_) => continue,
+                                }
+                            },
+                            Err(_) => continue,
+                        };
+                    }
+                },
+                Err(_) => return HashMap::new(),
+            };
+        },
+        Err(_) => return HashMap::new(),
+    };
+    return map;
 }
 
 pub fn validate_schema(schema: String, data: String) -> String {

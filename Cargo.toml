@@ -3,8 +3,11 @@ name = "balalib"
 version = "1.0.24"
 edition = "2021"
 
+[features]
+default = ["debug"]
+
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 mlua = { version = "0.9.9", features = ["lua51", "macros", "serialize", "module"] }
@@ -22,3 +25,4 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
+features = ["release"]
