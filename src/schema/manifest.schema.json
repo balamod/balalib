@@ -16,6 +16,34 @@
     "authorName": {
       "type": "string",
       "pattern": "[A-Za-z0-9]+( <.+@[a-z0-9]+\\.[a-z\\.]{3,}>)?"
+    },
+    "command": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z_]+$",
+          "minLength": 4,
+          "maxLength": 15
+        },
+        "lua_path": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)*$"
+        },
+        "short_description": {
+          "$ref": "#/$defs/text"
+        },
+        "usage": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "required": [
+        "name",
+        "lua_path",
+        "short_description",
+        "usage"
+      ],
+      "additionalProperties": false
     }
   },
   "type": "object",
@@ -87,6 +115,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/command"
+      }
     }
   },
   "additionalProperties": false

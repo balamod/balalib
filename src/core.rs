@@ -1,4 +1,4 @@
-use crate::mods::ModInfo;
+use crate::structs::modinfo::ModInfo;
 use crate::utils::{extract_functions, get_lua_files, minify_lua};
 use mlua::prelude::LuaResult;
 use mlua::{Lua, Table, Value};

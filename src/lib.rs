@@ -5,6 +5,7 @@ use crate::core::{
 };
 use mlua::prelude::*;
 use mlua::Value;
+use structs::modinfo::ModInfo;
 
 use crate::mods::*;
 #[cfg(not(target_os = "android"))]
@@ -12,6 +13,7 @@ use crate::updater::{get_latest_cli_version, self_update};
 
 mod core;
 mod mods;
+mod structs;
 mod tests;
 mod updater;
 mod utils;
