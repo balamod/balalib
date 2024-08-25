@@ -182,21 +182,30 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
                 '>' => {
                     let balalib_version = balalib_version.split(">").nth(1).unwrap();
                     if balalib_version <= VERSION {
-                        println!("Balalib version too low: {} for mod {}", balalib_version, manifest.id);
+                        println!(
+                            "Balalib version too low: {} for mod {}",
+                            balalib_version, manifest.id
+                        );
                         continue;
                     }
                 }
                 '<' => {
                     let balalib_version = balalib_version.split("<").nth(1).unwrap();
                     if balalib_version >= VERSION {
-                        println!("Balalib version too high: {} for mod {}", balalib_version, manifest.id);
+                        println!(
+                            "Balalib version too high: {} for mod {}",
+                            balalib_version, manifest.id
+                        );
                         continue;
                     }
                 }
                 '=' => {
                     let balalib_version = balalib_version.split("=").nth(1).unwrap();
                     if balalib_version != VERSION {
-                        println!("Balalib version does not match: {} for mod {}", balalib_version, manifest.id);
+                        println!(
+                            "Balalib version does not match: {} for mod {}",
+                            balalib_version, manifest.id
+                        );
                         continue;
                     }
                 }
@@ -208,7 +217,10 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         match manifest.clone().min_balamod_version {
             Some(min_balamod_version) => {
                 if balamod_version < min_balamod_version {
-                    println!("Balalib version too low: {} for mod {}", min_balamod_version, manifest.id);
+                    println!(
+                        "Balalib version too low: {} for mod {}",
+                        min_balamod_version, manifest.id
+                    );
                     continue;
                 }
             }
@@ -218,7 +230,10 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         match manifest.clone().max_balamod_version {
             Some(max_balamod_version) => {
                 if balamod_version > max_balamod_version {
-                    println!("Balalib version too high: {} for mod {}", max_balamod_version, manifest.id);
+                    println!(
+                        "Balalib version too high: {} for mod {}",
+                        max_balamod_version, manifest.id
+                    );
                     continue;
                 }
             }
@@ -229,7 +244,10 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
         let folder_name = folder_name.split("\\").last().unwrap();
 
         if manifest.id != folder_name {
-            println!("Mod id in manifest.json does not match folder name: {} != {}", manifest.id, folder_name);
+            println!(
+                "Mod id in manifest.json does not match folder name: {} != {}",
+                manifest.id, folder_name
+            );
             continue;
         }
 
@@ -353,7 +371,6 @@ enum VisitFlag {
 }
 
 pub fn sort_mods<'a>(lua: &'a Lua, mods_table: LuaTable<'a>) -> LuaResult<LuaTable<'a>> {
-
     let mut mods: Vec<LuaTable> = vec![];
     for pair in mods_table.clone().pairs::<String, Table>() {
         let (_, value) = pair?;
@@ -386,10 +403,16 @@ pub fn sort_mods<'a>(lua: &'a Lua, mods_table: LuaTable<'a>) -> LuaResult<LuaTab
         visited: &mut HashMap<String, VisitFlag>,
         sorted_mod_ids: &mut Vec<String>,
     ) -> bool {
-        if visited.get(&id).is_some_and(|flag| *flag == VisitFlag::Permanent) {
+        if visited
+            .get(&id)
+            .is_some_and(|flag| *flag == VisitFlag::Permanent)
+        {
             return true;
         }
-        if visited.get(&id).is_some_and(|flag| *flag == VisitFlag::Temporary) {
+        if visited
+            .get(&id)
+            .is_some_and(|flag| *flag == VisitFlag::Temporary)
+        {
             return false;
         }
         visited.insert(id.clone(), VisitFlag::Temporary);
@@ -411,9 +434,10 @@ pub fn sort_mods<'a>(lua: &'a Lua, mods_table: LuaTable<'a>) -> LuaResult<LuaTab
     let mut sorted_mods: Vec<LuaTable> = Vec::new();
     let mod_count = mods.len();
     for (i, id) in sorted_mod_ids.iter().enumerate() {
-        let mod_table = mods.iter().find(
-            |mod_table| mod_table.get::<_, String>("id").unwrap() == id.to_owned(),
-        ).unwrap();
+        let mod_table = mods
+            .iter()
+            .find(|mod_table| mod_table.get::<_, String>("id").unwrap() == id.to_owned())
+            .unwrap();
         mod_table.set("order", mod_count - i).unwrap();
         sorted_mods.push(mod_table.clone());
     }

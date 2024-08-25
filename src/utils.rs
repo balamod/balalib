@@ -181,14 +181,14 @@ pub fn get_lua_files() -> HashMap<String, String> {
                                     Ok(_) => map.insert(name, content),
                                     Err(_) => continue,
                                 }
-                            },
+                            }
                             Err(_) => continue,
                         };
                     }
-                },
+                }
                 Err(_) => return HashMap::new(),
             };
-        },
+        }
         Err(_) => return HashMap::new(),
     };
     return map;

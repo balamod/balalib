@@ -1,7 +1,7 @@
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use crate::core::restart;
-use mlua::prelude::LuaResult;
 use crate::VERSION;
+use mlua::prelude::LuaResult;
 
 pub fn need_update(balamod_version: String) -> LuaResult<bool> {
     let client = reqwest::blocking::Client::builder()
@@ -106,7 +106,10 @@ pub fn self_update(cli_ver: &str) -> LuaResult<()> {
         filename.push_str("linux");
     }
 
-    let url = format!("https://github.com/balamod/balamod/releases/download/{}/{}", cli_ver, filename);
+    let url = format!(
+        "https://github.com/balamod/balamod/releases/download/{}/{}",
+        cli_ver, filename
+    );
     let client = reqwest::blocking::Client::builder()
         .user_agent("balalib")
         .build()
