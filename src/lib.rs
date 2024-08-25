@@ -74,6 +74,10 @@ fn balalib(lua: &Lua) -> LuaResult<LuaTable> {
         "sort_mods",
         lua.create_function(|lua, mods: LuaTable| sort_mods(lua, mods))?,
     )?;
+    exports.set(
+        "install_mod_from_url",
+        lua.create_function(|lua, url: String| install_mod_from_url(lua, url))?,
+    )?;
     lua.load(format!("G.VERSION = G.VERSION .. '\\nBalalib {}'", VERSION).as_str())
         .exec()?;
     Ok(exports)
