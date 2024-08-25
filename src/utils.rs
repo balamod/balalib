@@ -1,6 +1,7 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::io::Read;
+#[cfg(debug_assertions)]
 use std::path::Path;
 use std::{env, fs};
 
@@ -120,6 +121,7 @@ pub fn extract_functions(minified_code: String) -> HashMap<String, String> {
     functions
 }
 
+#[cfg(debug_assertions)]
 fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
     for entry in fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
@@ -138,15 +140,8 @@ fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
     }
 }
 
-#[cfg(feature = "debug")]
+#[cfg(debug_assertions)]
 pub fn get_lua_files() -> HashMap<String, String> {
-    let exe_name = env::current_exe()
-        .unwrap()
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
     // files are in raw folder (1 arg)
     let path_arg = env::args().nth(1).unwrap();
     let mut map = HashMap::new();
@@ -166,7 +161,7 @@ pub fn get_lua_files() -> HashMap<String, String> {
     map
 }
 
-#[cfg(not(feature = "debug"))]
+#[cfg(not(debug_assertions))]
 pub fn get_lua_files() -> HashMap<String, String> {
     let exe_path = env::current_exe().unwrap();
     let mut map = HashMap::new();

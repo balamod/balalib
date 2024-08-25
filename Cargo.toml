@@ -3,9 +3,6 @@ name = "balalib"
 version = "1.0.24"
 edition = "2021"
 
-[features]
-default = ["debug"]
-
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
 
@@ -25,4 +22,3 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
-features = ["release"]
