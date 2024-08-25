@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
+    use crate::updater::get_latest_cli_version;
     use crate::utils::minify_lua;
     use std::fs;
-    use crate::updater::get_latest_cli_version;
 
     #[test]
     fn test_update() {
@@ -32,7 +32,6 @@ mod tests {
     fn test_get_last_cli_version() {
         println!("Latest CLI version: {}", get_latest_cli_version());
     }
-
 
     // TODO: Add test for sorted_mods
     // {"id": "test", "load_before": ["foo"], "load_after": ["baz", "qux"]}
