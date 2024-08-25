@@ -1,57 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::core::{get_love_dir, json_to_lua, lua_to_json};
+use crate::core::get_love_dir;
+use crate::structs::localmod::LocalMod;
+use crate::structs::modinfo::ModInfo;
 use crate::utils::validate_schema;
 use crate::VERSION;
-use mlua::prelude::{LuaError, LuaResult, LuaTable, LuaValue};
-use mlua::{FromLua, IntoLua, Lua, Table};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone)]
-pub struct ModInfo {
-    pub url: String,
-    pub id: String,
-    pub name: String,
-    pub description: Vec<String>,
-    pub version: String,
-    pub authors: Vec<String>,
-}
-
-impl IntoLua<'_> for ModInfo {
-    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
-        let table = lua.create_table()?;
-        let download_mod = self.clone();
-        let download_func = lua.create_function(move |lua, ()| download_mod.download(lua))?;
-        table.set("url", self.url)?;
-        table.set("id", self.id)?;
-        table.set("name", self.name)?;
-        table.set("description", self.description)?;
-        table.set("version", self.version)?;
-        table.set("authors", self.authors)?;
-        table.set("download", download_func)?;
-        Ok(LuaValue::Table(table))
-    }
-}
-
-impl FromLua<'_> for ModInfo {
-    fn from_lua(value: LuaValue, _: &'_ Lua) -> LuaResult<Self> {
-        let table = value.as_table().expect("Expected table");
-        Ok(ModInfo {
-            url: table.get("url")?,
-            id: table.get("id")?,
-            name: table.get("name")?,
-            description: table.get("description")?,
-            version: table.get("version")?,
-            authors: table.get("authors")?,
-        })
-    }
-}
-
-impl ModInfo {
-    pub fn download(&self, lua: &Lua) -> LuaResult<()> {
-        download_mod(lua, self.clone())
-    }
-}
+use mlua::prelude::{LuaError, LuaResult, LuaTable};
+use mlua::{Lua, Table};
 
 pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
     let owner = mod_info.url.split("/").nth(3).unwrap();
@@ -257,111 +212,6 @@ pub fn get_local_mods(lua: &Lua) -> LuaResult<Vec<LocalMod>> {
     }
 
     Ok(local_mods)
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LocalMod {
-    pub id: String,
-    #[serde(skip)]
-    pub enabled: bool,
-    pub name: String,
-    pub version: String,
-    pub description: Vec<String>,
-    pub author: String,
-    pub load_before: Vec<String>,
-    pub load_after: Vec<String>,
-    pub min_balamod_version: Option<String>,
-    pub max_balamod_version: Option<String>,
-    pub balalib_version: Option<String>,
-}
-
-impl IntoLua<'_> for LocalMod {
-    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
-        let local_mod = self.clone();
-        let table = lua.create_table()?;
-        let delete_mod = local_mod.clone();
-        let update_mod = local_mod.clone();
-        let save_config = local_mod.clone();
-        let load_config = local_mod.clone();
-        table.set(
-            "update",
-            lua.create_function(move |lua, mods: Vec<ModInfo>| update_mod.update(lua, mods))?,
-        )?;
-        table.set(
-            "delete",
-            lua.create_function(move |lua, ()| delete_mod.delete(lua))?,
-        )?;
-        table.set(
-            "save_config",
-            lua.create_function(move |lua, table: LuaValue| save_config.save_config(lua, table))?,
-        )?;
-        table.set(
-            "load_config",
-            lua.create_function(move |lua, ()| load_config.load_config(lua))?,
-        )?;
-        table.set("id", local_mod.id)?;
-        table.set("name", local_mod.name)?;
-        table.set("enabled", local_mod.enabled)?;
-        table.set("version", local_mod.version)?;
-        table.set("description", local_mod.description)?;
-        table.set("author", local_mod.author)?;
-        table.set("load_before", local_mod.load_before)?;
-        table.set("load_after", local_mod.load_after)?;
-
-        Ok(LuaValue::Table(table))
-    }
-}
-
-impl LocalMod {
-    pub fn delete(&self, lua: &Lua) -> LuaResult<()> {
-        let love_dir = get_love_dir(lua)?;
-        let mods_dir = format!("{}/mods", love_dir);
-        let mod_dir = format!("{}/{}", mods_dir, self.id);
-        std::fs::remove_dir_all(mod_dir)?;
-        Ok(())
-    }
-
-    pub fn update(&self, lua: &Lua, mods: Vec<ModInfo>) -> LuaResult<()> {
-        let mod_info = mods.iter().find(|mod_info| mod_info.id == self.id);
-        match mod_info {
-            Some(mod_info) => {
-                download_mod(lua, mod_info.clone())?;
-                println!("Updated mod: {}", self.id);
-                Ok(())
-            }
-            None => {
-                println!("Mod not found in the repo: {}", self.id);
-                Err(LuaError::RuntimeError(format!(
-                    "Mod not found in the repo: {}",
-                    self.id
-                )))
-            }
-        }
-    }
-
-    pub fn save_config(&self, lua: &Lua, table: LuaValue) -> LuaResult<()> {
-        let json = lua_to_json(table)?;
-        let love_dir = get_love_dir(lua)?;
-        let mods_dir = format!("{}/mods", love_dir);
-        let mod_dir = format!("{}/{}", mods_dir, self.id);
-        let config_file = format!("{}/config.json", mod_dir);
-        std::fs::write(config_file, json)?;
-        Ok(())
-    }
-
-    pub fn load_config<'lua>(&self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
-        let love_dir = get_love_dir(lua)?;
-        let mods_dir = format!("{}/mods", love_dir);
-        let mod_dir = format!("{}/{}", mods_dir, self.id);
-        let config_file = format!("{}/config.json", mod_dir);
-        if !std::path::Path::new(&config_file).exists() {
-            println!("No config file found for mod: {}", self.id);
-            return Ok(LuaValue::Nil);
-        }
-
-        let json = std::fs::read_to_string(config_file)?;
-        json_to_lua(lua, json)
-    }
 }
 
 #[derive(PartialEq)]
