@@ -1,10 +1,10 @@
 [package]
 name = "balalib"
-version = "1.0.24"
+version = "1.0.25"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 mlua = { version = "0.9.9", features = ["lua51", "macros", "serialize", "module"] }
@@ -13,7 +13,7 @@ reqwest = { version = "0.12.5", features = ["json", "blocking"] }
 serde = { version = "1.0.208", features = ["derive"] }
 tar = "0.4.41"
 flate2 = "1.0.33"
-zip = "2.1.6"
+zip = "2.2.0"
 regex = "1.10.6"
 jsonschema = "0.18.0"
 
