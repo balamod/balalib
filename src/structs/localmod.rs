@@ -38,7 +38,7 @@ pub struct LocalMod {
     pub min_balamod_version: Option<String>,
     pub max_balamod_version: Option<String>,
     pub balalib_version: Option<String>,
-    pub commands: Vec<ModCommand>,
+    pub commands: Option<Vec<ModCommand>>,
 }
 
 impl IntoLua<'_> for LocalMod {
@@ -73,8 +73,18 @@ impl IntoLua<'_> for LocalMod {
         table.set("author", local_mod.author)?;
         table.set("load_before", local_mod.load_before)?;
         table.set("load_after", local_mod.load_after)?;
-        table.set("commands", local_mod.commands)?;
-
+        match local_mod.commands {
+            Some(commands) => {
+                let commands: Vec<LuaValue> = commands
+                    .into_iter()
+                    .map(|command| command.into_lua(lua))
+                    .collect::<LuaResult<_>>()?;
+                table.set("commands", commands)?;
+            }
+            None => {
+                table.set("commands", lua.create_table()?)?;
+            }
+        };
         Ok(LuaValue::Table(table))
     }
 }
