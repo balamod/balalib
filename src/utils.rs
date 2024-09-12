@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::io::Read;
-#[cfg(debug_assertions)]
+#[cfg(not(all(target_os = "macos", not(debug_assertions))))]
 use std::path::Path;
 use std::{env, fs};
 
@@ -121,7 +121,7 @@ pub fn extract_functions(minified_code: String) -> HashMap<String, String> {
     functions
 }
 
-#[cfg(debug_assertions)]
+#[cfg(not(all(target_os = "macos", not(debug_assertions))))]
 fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
     for entry in fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
@@ -140,7 +140,54 @@ fn traverse_dir(dir: &Path, prefix: &str, files: &mut Vec<String>) {
     }
 }
 
-#[cfg(debug_assertions)]
+#[cfg(not(target_os = "macos"))]
+pub fn get_lua_files() -> HashMap<String, String> {
+    let exe_name = env::current_exe()
+        .unwrap()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    if exe_name == "love" || exe_name == "love.exe" {
+        // files are in raw folder (1 arg)
+        let path_arg = env::args().nth(1).unwrap();
+        let mut map = HashMap::new();
+        // only files in the directory
+        let mut entries = vec![];
+        traverse_dir(Path::new(&path_arg), "", &mut entries);
+
+        for entry in entries {
+            if entry.ends_with(".lua") {
+                let mut file = fs::File::open(format!("{}/{}", path_arg, entry)).unwrap();
+                let mut content = String::new();
+                file.read_to_string(&mut content).unwrap();
+                map.insert(entry.replace(".lua", ""), content);
+            }
+        }
+
+        map
+    } else {
+        let exe_path = env::current_exe().unwrap();
+        let file = fs::File::open(exe_path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut map = HashMap::new();
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).unwrap();
+            let name = file.name().to_string();
+            if !name.ends_with(".lua") {
+                continue;
+            }
+            let mut content = String::new();
+            file.read_to_string(&mut content).unwrap();
+            map.insert(name, content);
+        }
+        map
+    }
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
 pub fn get_lua_files() -> HashMap<String, String> {
     // files are in raw folder (1 arg)
     let path_arg = env::args().nth(1).unwrap();
@@ -161,7 +208,7 @@ pub fn get_lua_files() -> HashMap<String, String> {
     map
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(all(not(debug_assertions), target_os = "macos"))]
 pub fn get_lua_files() -> HashMap<String, String> {
     let exe_path = env::current_exe().unwrap();
     let mut map = HashMap::new();
