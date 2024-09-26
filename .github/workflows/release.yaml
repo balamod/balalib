@@ -13,7 +13,7 @@ jobs:
       remote: ${{ steps.env.outputs.remote }}
     steps:
       - name: ⬇️ Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.0
 
       - name: ⚙️ Setup environment
         id: env
@@ -48,7 +48,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: ⬇️ Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.0
 
       - name: ⬇️ Force fetch of repo to get the absolute latest version
         run: |
