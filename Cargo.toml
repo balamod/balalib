@@ -8,7 +8,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 mlua = { version = "0.9.9", features = ["lua51", "macros", "serialize", "module"] }
-serde_json = "1.0.127"
+serde_json = "1.0.132"
 reqwest = { version = "0.12.7", features = ["json", "blocking"] }
 serde = { version = "1.0.209", features = ["derive"] }
 tar = "0.4.41"
