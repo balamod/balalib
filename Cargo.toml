@@ -12,7 +12,7 @@ serde_json = "1.0.127"
 reqwest = { version = "0.12.7", features = ["json", "blocking"] }
 serde = { version = "1.0.209", features = ["derive"] }
 tar = "0.4.41"
-flate2 = "1.0.33"
+flate2 = "1.0.35"
 zip = "2.2.0"
 regex = "1.10.6"
 jsonschema = "0.18.1"
