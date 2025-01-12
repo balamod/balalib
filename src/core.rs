@@ -121,7 +121,19 @@ pub fn is_mod_present(lua: &Lua, mod_info: ModInfo) -> LuaResult<bool> {
 pub fn restart() -> LuaResult<()> {
     let exe_path = env::current_exe()?;
     let args: Vec<String> = env::args().collect();
-    Command::new(exe_path).args(&args).spawn()?;
+    let batch_script = format!(
+        r#"start "" "{}" {}"#,
+        exe_path.to_str().unwrap(),
+        args.iter().skip(1).map(|s| s.to_owned()).collect::<Vec<String>>().join(" ")
+    );
+    let temp_dir = env::temp_dir();
+    let script_path = temp_dir.join("balamod_restart.bat");
+    std::fs::write(&script_path, batch_script)?;
+    Command::new("cmd")
+        .arg("/C")
+        .arg(script_path)
+        .spawn()?;
+
     std::process::exit(0);
 }
 
