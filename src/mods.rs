@@ -13,23 +13,21 @@ pub fn download_mod(lua: &Lua, mod_info: ModInfo) -> LuaResult<()> {
     let repo = mod_info.url.split("/").nth(4).unwrap();
     let version = mod_info.version;
     let id = mod_info.id;
-    let client = reqwest::blocking::Client::new();
     let url = format!(
         "https://github.com/{}/{}/releases/download/{}/{}.tar.gz",
         owner, repo, version, id
     );
-    let response = client
-        .get(url.clone())
-        .send()
-        .expect("Failed to get response");
-    let body = response.bytes().expect("Failed to get body");
-    let love_dir = get_love_dir(lua).expect("Failed to get love dir");
-    let mods_dir = format!("{}/mods", love_dir);
-    let mod_dir = format!("{}/{}", mods_dir, id);
-    std::fs::create_dir_all(&mod_dir)?;
-    let tar = body.to_vec();
-    unpack_tar(&mod_dir, tar.clone()).expect(format!("Failed to unpack tar: {}", url).as_str());
-    Ok(())
+    match install_mod_from_url(lua, url) {
+        Ok(result_table) => {
+            if result_table.contains_key("error").unwrap() {
+                return Err(LuaError::RuntimeError(
+                    result_table.get::<_, String>("error")?,
+                ));
+            }
+            return Ok(());
+        }
+        Err(e) => Err(e),
+    }
 }
 
 pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
@@ -298,4 +296,86 @@ pub fn sort_mods<'a>(lua: &'a Lua, mods_table: LuaTable<'a>) -> LuaResult<LuaTab
     }
 
     Ok(sorted_mods_table)
+}
+
+pub fn install_mod_from_url<'a>(lua: &'a Lua, url: String) -> LuaResult<LuaTable<'a>> {
+    let result_table = lua.create_table()?;
+    let client = reqwest::blocking::Client::new();
+    match client.get(url.clone()).send() {
+        Ok(response) => {
+            match response.bytes() {
+                Ok(body) => {
+                    match get_love_dir(lua) {
+                        Ok(love_dir) => {
+                            let mods_dir = format!("{}/mods", love_dir);
+                            let mod_dir = format!("{}/{}", mods_dir, "tmp_mod");
+                            std::fs::create_dir_all(&mod_dir)?;
+                            let tar = body.to_vec();
+                            match unpack_tar(&mod_dir, tar.clone()) {
+                                Ok(_) => {
+                                    let manifest_file = format!("{}/manifest.json", mod_dir);
+                                    if !std::path::Path::new(&manifest_file).exists() {
+                                        // clean up temporary mod directory
+                                        std::fs::remove_dir_all(&mod_dir)?;
+                                        result_table.set(
+                                            "error",
+                                            format!("Failed to find manifest.json in {}", url),
+                                        )?;
+                                        return Ok(result_table);
+                                    }
+                                    let manifest = std::fs::read_to_string(manifest_file)?;
+                                    match serde_json::from_str(&manifest) {
+                                        Ok(manifest) => {
+                                            let manifest: LocalMod = manifest;
+                                            // rename tmp mod directory to mod id
+                                            let mod_dir_new =
+                                                format!("{}/{}", mods_dir, manifest.id);
+                                            std::fs::rename(&mod_dir, &mod_dir_new)?;
+                                            result_table.set("mod_id", manifest.id)?;
+                                            return Ok(result_table);
+                                        }
+                                        Err(e) => {
+                                            // clean up temporary mod directory
+                                            std::fs::remove_dir_all(&mod_dir)?;
+                                            result_table.set(
+                                                "error",
+                                                format!("Failed to parse manifest.json: {}", e),
+                                            )?;
+                                            return Ok(result_table);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    // clean up temporary mod directory
+                                    std::fs::remove_dir_all(&mod_dir)?;
+                                    result_table.set(
+                                        "error",
+                                        format!("Failed to unpack tar: {}, error: {}", url, e)
+                                            .as_str(),
+                                    )?;
+                                    return Ok(result_table);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            result_table
+                                .set("error", format!("Failed to get love directory: {}", e))?;
+                            return Ok(result_table);
+                        }
+                    }
+                }
+                Err(e) => {
+                    result_table.set("error", format!("Failed to get body: {}", e))?;
+                    return Ok(result_table);
+                }
+            }
+        }
+        Err(e) => {
+            result_table.set(
+                "error",
+                format!("Failed to fetch mod from URL: {}, error: {}", url, e),
+            )?;
+            Ok(result_table)
+        }
+    }
 }
